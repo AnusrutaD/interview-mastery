@@ -4,25 +4,28 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 const DIFF_COLOR = {
-  Easy:   { text: "text-green-600",  bg: "bg-green-500" },
-  Medium: { text: "text-yellow-600", bg: "bg-yellow-500" },
-  Hard:   { text: "text-red-600",    bg: "bg-red-500" },
+  Easy:   { text: "text-green-600 dark:text-green-400",  bg: "bg-green-500" },
+  Medium: { text: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500" },
+  Hard:   { text: "text-red-600 dark:text-red-400",    bg: "bg-red-500" },
 };
 
 const MASTERY_COLOR = {
-  mastered: { text: "text-green-700",  bg: "bg-green-100",  label: "Mastered" },
-  familiar: { text: "text-blue-700",   bg: "bg-blue-100",   label: "Familiar" },
-  learning: { text: "text-yellow-700", bg: "bg-yellow-100", label: "Learning" },
-  unseen:   { text: "text-gray-500",   bg: "bg-gray-100",   label: "Unseen"   },
+  mastered: { text: "text-green-700 dark:text-green-400",  bg: "bg-green-100 dark:bg-green-900/40",  label: "Mastered" },
+  familiar: { text: "text-blue-700 dark:text-blue-400",    bg: "bg-blue-100 dark:bg-blue-900/40",    label: "Familiar" },
+  learning: { text: "text-yellow-700 dark:text-yellow-400", bg: "bg-yellow-100 dark:bg-yellow-900/40", label: "Learning" },
+  unseen:   { text: "text-gray-500 dark:text-gray-400",    bg: "bg-gray-100 dark:bg-gray-800",       label: "Unseen"   },
 };
+
+// Shared card class
+const card = "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl";
 
 function Avatar({ user }) {
   if (user?.image) {
-    return <img src={user.image} alt={user.name} className="w-20 h-20 rounded-full border-4 border-white shadow-md" />;
+    return <img src={user.image} alt={user.name} className="w-20 h-20 rounded-full border-4 border-white dark:border-gray-800 shadow-md" />;
   }
   const initials = (user?.name || user?.email || "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   return (
-    <div className="w-20 h-20 rounded-full border-4 border-white shadow-md bg-blue-600 flex items-center justify-center text-white text-2xl font-bold">
+    <div className="w-20 h-20 rounded-full border-4 border-white dark:border-gray-800 shadow-md bg-blue-600 flex items-center justify-center text-white text-2xl font-bold">
       {initials}
     </div>
   );
@@ -36,7 +39,7 @@ function CircleProgress({ solved, total }) {
   return (
     <div className="relative w-36 h-36 flex items-center justify-center">
       <svg className="absolute inset-0 -rotate-90" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r={r} fill="none" stroke="#e5e7eb" strokeWidth="10" />
+        <circle cx="60" cy="60" r={r} fill="none" className="stroke-gray-200 dark:stroke-gray-700" strokeWidth="10" />
         <circle
           cx="60" cy="60" r={r} fill="none"
           stroke="#2563eb" strokeWidth="10"
@@ -46,8 +49,8 @@ function CircleProgress({ solved, total }) {
         />
       </svg>
       <div className="text-center z-10">
-        <p className="text-3xl font-bold text-gray-900">{solved}</p>
-        <p className="text-xs text-gray-400">/ {total}</p>
+        <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{solved}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500">/ {total}</p>
       </div>
     </div>
   );
@@ -56,7 +59,7 @@ function CircleProgress({ solved, total }) {
 function Bar({ value, total, colorClass }) {
   const pct = total ? Math.round((value / total) * 100) : 0;
   return (
-    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+    <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
       <div className={`h-full rounded-full transition-all duration-500 ${colorClass}`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -130,8 +133,8 @@ export default function ProfilePage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-400 text-sm animate-pulse">Loading profile…</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+        <div className="text-gray-400 dark:text-gray-500 text-sm animate-pulse">Loading profile…</div>
       </div>
     );
   }
@@ -145,48 +148,52 @@ export default function ProfilePage() {
       value: stats.solvedToday,
       icon: "🎯",
       sub: stats.solvedToday === 1 ? "problem" : "problems",
-      color: stats.solvedToday > 0 ? "text-blue-700" : "text-gray-400",
+      color: stats.solvedToday > 0 ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500",
     },
     {
       label: "Current Streak",
       value: stats.streak,
       icon: stats.streak >= 7 ? "🔥" : stats.streak >= 3 ? "⚡" : "📅",
       sub: stats.streak === 1 ? "day" : "days",
-      color: stats.streak >= 7 ? "text-orange-600" : stats.streak >= 3 ? "text-yellow-600" : "text-gray-500",
+      color: stats.streak >= 7 ? "text-orange-600 dark:text-orange-400" : stats.streak >= 3 ? "text-yellow-600 dark:text-yellow-400" : "text-gray-500 dark:text-gray-400",
     },
     {
       label: "Total Attempted",
       value: stats.attempted,
       icon: "✅",
       sub: `of ${stats.total}`,
-      color: "text-green-700",
+      color: "text-green-700 dark:text-green-400",
     },
     {
       label: "Mastered",
       value: stats.mastered,
       icon: "⭐",
       sub: `of ${stats.total}`,
-      color: "text-purple-700",
+      color: "text-purple-700 dark:text-purple-400",
     },
   ];
+
+  const solvedToday = stats.solvedToday;
+  const goalPct = Math.min(100, Math.round((solvedToday / dailyGoal) * 100));
+  const goalDone = solvedToday >= dailyGoal;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-4xl mx-auto px-4 py-6">
 
         {/* Hero card */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-4 flex flex-col sm:flex-row items-center sm:items-start gap-5">
+        <div className={`${card} p-6 mb-4 flex flex-col sm:flex-row items-center sm:items-start gap-5`}>
           <Avatar user={user} />
           <div className="flex-1 text-center sm:text-left">
-            <h1 className="text-2xl font-bold text-gray-900">{user.name || "Anonymous"}</h1>
-            <p className="text-sm text-gray-400 mt-0.5">{user.email}</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{user.name || "Anonymous"}</h1>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-0.5">{user.email}</p>
             <div className="flex flex-wrap gap-2 justify-center sm:justify-start mt-3">
-              <span className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">NeetCode 150</span>
-              <span className="text-xs bg-green-50 text-green-700 px-3 py-1 rounded-full font-medium">
+              <span className="text-xs bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 px-3 py-1 rounded-full font-medium">NeetCode 150</span>
+              <span className="text-xs bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 px-3 py-1 rounded-full font-medium">
                 {Math.round((stats.attempted / stats.total) * 100)}% Complete
               </span>
               {stats.mastered > 0 && (
-                <span className="text-xs bg-purple-50 text-purple-700 px-3 py-1 rounded-full font-medium">
+                <span className="text-xs bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-400 px-3 py-1 rounded-full font-medium">
                   {stats.mastered} Mastered
                 </span>
               )}
@@ -196,66 +203,57 @@ export default function ProfilePage() {
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          {statCards.map(card => (
-            <div key={card.label} className="bg-white border border-gray-200 rounded-2xl p-4 flex flex-col items-center text-center">
-              <span className="text-2xl mb-1">{card.icon}</span>
-              <span className={`text-3xl font-bold ${card.color}`}>{card.value}</span>
-              <span className="text-xs text-gray-400 mt-0.5">{card.sub}</span>
-              <span className="text-xs font-medium text-gray-500 mt-1">{card.label}</span>
+          {statCards.map(c => (
+            <div key={c.label} className={`${card} p-4 flex flex-col items-center text-center`}>
+              <span className="text-2xl mb-1">{c.icon}</span>
+              <span className={`text-3xl font-bold ${c.color}`}>{c.value}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{c.sub}</span>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">{c.label}</span>
             </div>
           ))}
         </div>
 
         {/* Daily goal card */}
-        {(() => {
-          const solved = stats.solvedToday;
-          const pct = Math.min(100, Math.round((solved / dailyGoal) * 100));
-          const done = solved >= dailyGoal;
-          return (
-            <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-4">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-gray-700">Daily Goal</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {done
-                      ? "🎉 Goal reached! Keep going!"
-                      : `${solved} of ${dailyGoal} problems solved today`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => updateGoal(dailyGoal - 1)}
-                    disabled={dailyGoal <= 1 || savingGoal}
-                    className="w-7 h-7 rounded-full border border-gray-200 text-gray-500 text-sm font-bold hover:bg-gray-50 disabled:opacity-30 transition-colors"
-                  >−</button>
-                  <span className="text-lg font-bold text-gray-800 w-6 text-center">{dailyGoal}</span>
-                  <button
-                    onClick={() => updateGoal(dailyGoal + 1)}
-                    disabled={dailyGoal >= 20 || savingGoal}
-                    className="w-7 h-7 rounded-full border border-gray-200 text-gray-500 text-sm font-bold hover:bg-gray-50 disabled:opacity-30 transition-colors"
-                  >+</button>
-                </div>
-              </div>
-              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${done ? "bg-green-500" : "bg-blue-500"}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <div className="flex justify-between mt-1.5">
-                <span className="text-xs text-gray-400">{pct}% complete</span>
-                {done && <span className="text-xs text-green-600 font-medium">✓ Done for today</span>}
-              </div>
+        <div className={`${card} p-5 mb-4`}>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Daily Goal</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                {goalDone ? "🎉 Goal reached! Keep going!" : `${solvedToday} of ${dailyGoal} problems solved today`}
+              </p>
             </div>
-          );
-        })()}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => updateGoal(dailyGoal - 1)}
+                disabled={dailyGoal <= 1 || savingGoal}
+                className="w-7 h-7 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors"
+              >−</button>
+              <span className="text-lg font-bold text-gray-800 dark:text-gray-200 w-6 text-center">{dailyGoal}</span>
+              <button
+                onClick={() => updateGoal(dailyGoal + 1)}
+                disabled={dailyGoal >= 20 || savingGoal}
+                className="w-7 h-7 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-30 transition-colors"
+              >+</button>
+            </div>
+          </div>
+          <div className="h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${goalDone ? "bg-green-500" : "bg-blue-500"}`}
+              style={{ width: `${goalPct}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-1.5">
+            <span className="text-xs text-gray-400 dark:text-gray-500">{goalPct}% complete</span>
+            {goalDone && <span className="text-xs text-green-600 dark:text-green-400 font-medium">✓ Done for today</span>}
+          </div>
+        </div>
 
         {/* Progress overview */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
 
           {/* Circle + mastery breakdown */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Overall Progress</h2>
+          <div className={`${card} p-6`}>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Overall Progress</h2>
             <div className="flex items-center gap-6">
               <CircleProgress solved={stats.attempted} total={stats.total} />
               <div className="flex flex-col gap-2 flex-1">
@@ -275,8 +273,8 @@ export default function ProfilePage() {
           </div>
 
           {/* Difficulty breakdown */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">By Difficulty</h2>
+          <div className={`${card} p-6`}>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">By Difficulty</h2>
             <div className="flex flex-col gap-4">
               {byDifficulty.map(d => {
                 const cfg = DIFF_COLOR[d.label];
@@ -284,7 +282,7 @@ export default function ProfilePage() {
                   <div key={d.label}>
                     <div className="flex justify-between items-center mb-1.5">
                       <span className={`text-xs font-semibold ${cfg.text}`}>{d.label}</span>
-                      <span className="text-xs text-gray-500">{d.solved} / {d.total}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{d.solved} / {d.total}</span>
                     </div>
                     <Bar value={d.solved} total={d.total} colorClass={cfg.bg} />
                   </div>
@@ -295,14 +293,14 @@ export default function ProfilePage() {
         </div>
 
         {/* Category breakdown */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">By Topic</h2>
+        <div className={`${card} p-6 mb-4`}>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">By Topic</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
             {byCategory.map(cat => (
               <div key={cat.name}>
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-gray-600 truncate mr-2">{cat.name}</span>
-                  <span className="text-xs text-gray-400 shrink-0">{cat.solved}/{cat.total}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400 truncate mr-2">{cat.name}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{cat.solved}/{cat.total}</span>
                 </div>
                 <Bar value={cat.solved} total={cat.total} colorClass="bg-blue-500" />
               </div>
@@ -311,7 +309,7 @@ export default function ProfilePage() {
         </div>
 
         {/* API Key — Chrome Extension */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 mb-4">
+        <div className={`${card} p-6 mb-4`}>
           <div className="flex items-start justify-between mb-3">
             <div>
               <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Chrome Extension API Key</h2>
@@ -340,26 +338,26 @@ export default function ProfilePage() {
               {regenerating ? "…" : "Regenerate"}
             </button>
           </div>
-          <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">⚠ Keep this key private. Regenerating will invalidate the old key.</p>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">⚠ Keep this key private. Regenerating will invalidate the old key.</p>
         </div>
 
         {/* Recent activity */}
         {recent.length > 0 && (
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Recent Activity</h2>
+          <div className={`${card} p-6`}>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Recent Activity</h2>
             <div className="flex flex-col gap-2">
               {recent.map(p => {
                 const diff = DIFF_COLOR[p.difficulty];
                 const mst = MASTERY_COLOR[p.mastery];
                 return (
-                  <div key={p.id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                    <span className="text-xs text-gray-300 w-6 text-right shrink-0">{p.id}</span>
-                    <span className="text-sm text-gray-700 flex-1 truncate">{p.title}</span>
+                  <div key={p.id} className="flex items-center gap-3 py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                    <span className="text-xs text-gray-300 dark:text-gray-600 w-6 text-right shrink-0">{p.id}</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">{p.title}</span>
                     <span className={`text-xs font-medium ${diff.text} hidden sm:block`}>{p.difficulty}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${mst.bg} ${mst.text} font-medium shrink-0`}>
                       {mst.label}
                     </span>
-                    <span className="text-xs text-gray-300 shrink-0">{timeAgo(p.updatedAt)}</span>
+                    <span className="text-xs text-gray-300 dark:text-gray-600 shrink-0">{timeAgo(p.updatedAt)}</span>
                   </div>
                 );
               })}
