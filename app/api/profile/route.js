@@ -73,16 +73,21 @@ export async function GET() {
     .slice(0, 10)
     .map(p => ({ id: p.id, title: p.title, difficulty: p.difficulty, mastery: p.mastery, updatedAt: p.updatedAt }));
 
+  // Only count rows with valid internal problem IDs (1–150)
+  // Rows outside this range are orphans from the old extension bug (sent LeetCode numbers)
+  const validProblemIds = new Set(PROBLEMS.map(p => p.id));
+  const validRows = progressRows.filter(r => validProblemIds.has(r.problemId));
+
   // Solved today
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  const solvedToday = progressRows.filter(
+  const solvedToday = validRows.filter(
     r => r.mastery !== "unseen" && new Date(r.updatedAt) >= todayStart
   ).length;
 
   // Streak — consecutive days with at least one solve (uses updatedAt as proxy)
   const solveDays = new Set(
-    progressRows
+    validRows
       .filter(r => r.mastery !== "unseen")
       .map(r => {
         const d = new Date(r.updatedAt);
