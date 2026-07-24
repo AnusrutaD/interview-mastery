@@ -41,6 +41,7 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?
+  apiKey        String?  @unique
   accounts      Account[]
   sessions      Session[]
   progress      Progress[]

@@ -77,6 +77,9 @@ export default function ProfilePage() {
   const router = useRouter();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [apiKey, setApiKey] = useState(null);
+  const [apiKeyCopied, setApiKeyCopied] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -88,7 +91,25 @@ export default function ProfilePage() {
       .then(r => r.json())
       .then(setData)
       .finally(() => setLoading(false));
+    fetch("/api/user/api-key")
+      .then(r => r.json())
+      .then(d => setApiKey(d.apiKey))
+      .catch(console.error);
   }, [status]);
+
+  const copyApiKey = () => {
+    navigator.clipboard.writeText(apiKey);
+    setApiKeyCopied(true);
+    setTimeout(() => setApiKeyCopied(false), 2000);
+  };
+
+  const regenerateApiKey = async () => {
+    setRegenerating(true);
+    const res = await fetch("/api/user/api-key", { method: "POST" });
+    const d = await res.json();
+    setApiKey(d.apiKey);
+    setRegenerating(false);
+  };
 
   if (status === "loading" || loading) {
     return (
@@ -186,6 +207,39 @@ export default function ProfilePage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* API Key — Chrome Extension */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 mb-4">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Chrome Extension API Key</h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                Paste this key into the Interview Mastery Chrome extension to auto-sync LeetCode submissions.
+              </p>
+            </div>
+            <span className="text-xs bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-400 px-2 py-1 rounded-full font-medium shrink-0 ml-3">Extension</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2.5 font-mono text-gray-700 dark:text-gray-300 truncate">
+              {apiKey || "Generating…"}
+            </code>
+            <button
+              onClick={copyApiKey}
+              disabled={!apiKey}
+              className="px-3 py-2.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shrink-0"
+            >
+              {apiKeyCopied ? "Copied ✓" : "Copy"}
+            </button>
+            <button
+              onClick={regenerateApiKey}
+              disabled={regenerating}
+              className="px-3 py-2.5 text-xs font-medium rounded-lg border border-red-200 dark:border-red-900 bg-white dark:bg-gray-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors shrink-0"
+            >
+              {regenerating ? "…" : "Regenerate"}
+            </button>
+          </div>
+          <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">⚠ Keep this key private. Regenerating will invalidate the old key.</p>
         </div>
 
         {/* Recent activity */}

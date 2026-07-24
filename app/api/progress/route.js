@@ -2,19 +2,45 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// GET /api/progress — load all progress for the logged-in user
-export async function GET() {
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-api-key",
+};
+
+// OPTIONS — preflight for Chrome extension
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
+// Resolve userId from session OR x-api-key header
+async function resolveUserId(request) {
+  // Try API key first (for Chrome extension)
+  const apiKey = request.headers.get("x-api-key");
+  if (apiKey) {
+    const user = await prisma.user.findUnique({
+      where: { apiKey },
+      select: { id: true },
+    });
+    return user?.id || null;
+  }
+  // Fall back to session
   const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return session?.user?.id || null;
+}
+
+// GET /api/progress — load all progress for the logged-in user
+export async function GET(request) {
+  const userId = await resolveUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: CORS_HEADERS });
   }
 
   const rows = await prisma.progress.findMany({
-    where: { userId: session.user.id },
+    where: { userId },
     select: { problemId: true, mastery: true, notes: true },
   });
 
-  // Convert to { progress: {id: level}, notes: {id: text} }
   const progress = {};
   const notes = {};
   for (const row of rows) {
@@ -22,26 +48,26 @@ export async function GET() {
     if (row.notes) notes[row.problemId] = row.notes;
   }
 
-  return NextResponse.json({ progress, notes });
+  return NextResponse.json({ progress, notes }, { headers: CORS_HEADERS });
 }
 
 // POST /api/progress — upsert a single problem's progress
 export async function POST(request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = await resolveUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: CORS_HEADERS });
   }
 
   const { problemId, mastery, notes } = await request.json();
   if (!problemId) {
-    return NextResponse.json({ error: "problemId required" }, { status: 400 });
+    return NextResponse.json({ error: "problemId required" }, { status: 400, headers: CORS_HEADERS });
   }
 
   const row = await prisma.progress.upsert({
-    where: { userId_problemId: { userId: session.user.id, problemId } },
+    where: { userId_problemId: { userId, problemId } },
     update: { ...(mastery !== undefined && { mastery }), ...(notes !== undefined && { notes }) },
-    create: { userId: session.user.id, problemId, mastery: mastery ?? "unseen", notes: notes ?? null },
+    create: { userId, problemId, mastery: mastery ?? "unseen", notes: notes ?? null },
   });
 
-  return NextResponse.json({ ok: true, row });
+  return NextResponse.json({ ok: true, row }, { headers: CORS_HEADERS });
 }
