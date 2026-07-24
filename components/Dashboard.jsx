@@ -106,7 +106,7 @@ export default function Dashboard() {
     }
   }, [isLoggedIn]);
 
-  const solved = problems.filter(p => p.mastery === "mastered" || p.mastery === "familiar").length;
+  const solved = problems.filter(p => p.mastery !== "unseen").length;
   const today  = new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
 
   return (
@@ -122,7 +122,7 @@ export default function Dashboard() {
             {syncing && <span className="text-xs text-blue-500 animate-pulse">Syncing…</span>}
             <div className="text-right">
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">{solved}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">/ 150 solved</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">/ 150 attempted</p>
             </div>
           </div>
         </div>
