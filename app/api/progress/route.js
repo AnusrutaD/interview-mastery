@@ -59,7 +59,7 @@ export async function POST(request) {
   }
 
   const { problemId, mastery, notes } = await request.json();
-  if (!problemId) {
+  if (problemId == null) {
     return NextResponse.json({ error: "problemId required" }, { status: 400, headers: CORS_HEADERS });
   }
 
