@@ -6,8 +6,6 @@ import StatsBar from "./StatsBar";
 import Filters from "./Filters";
 import ProblemTable from "./ProblemTable";
 import Stopwatch from "./Stopwatch";
-import AuthButton from "./AuthButton";
-import ThemeToggle from "./ThemeToggle";
 
 const STORAGE_KEY = "lc-mastery-progress";
 const NOTES_KEY   = "lc-mastery-notes";
@@ -113,21 +111,18 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
-      <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:py-8">
 
-        {/* Header */}
-        <div className="flex items-start justify-between mb-5 gap-3">
+        {/* Page sub-header */}
+        <div className="flex items-center justify-between mb-5">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Interview Mastery</h1>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{today} · NeetCode 150</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">{today} · NeetCode 150</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {syncing && <span className="text-xs text-blue-500 animate-pulse">Syncing…</span>}
-            <ThemeToggle />
-            <AuthButton />
-            <div className="text-right shrink-0">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{solved}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">/ 150</p>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 leading-none">{solved}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">/ 150 solved</p>
             </div>
           </div>
         </div>

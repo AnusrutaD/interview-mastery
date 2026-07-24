@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 const DIFF_COLOR = {
   Easy:   { text: "text-green-600",  bg: "bg-green-500" },
@@ -80,6 +79,8 @@ export default function ProfilePage() {
   const [apiKey, setApiKey] = useState(null);
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [dailyGoal, setDailyGoal] = useState(3);
+  const [savingGoal, setSavingGoal] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -95,12 +96,28 @@ export default function ProfilePage() {
       .then(r => r.json())
       .then(d => setApiKey(d.apiKey))
       .catch(console.error);
+    fetch("/api/user/settings")
+      .then(r => r.json())
+      .then(d => setDailyGoal(d.dailyGoal ?? 3))
+      .catch(console.error);
   }, [status]);
 
   const copyApiKey = () => {
     navigator.clipboard.writeText(apiKey);
     setApiKeyCopied(true);
     setTimeout(() => setApiKeyCopied(false), 2000);
+  };
+
+  const updateGoal = async (newGoal) => {
+    const clamped = Math.max(1, Math.min(20, newGoal));
+    setDailyGoal(clamped);
+    setSavingGoal(true);
+    await fetch("/api/user/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dailyGoal: clamped }),
+    });
+    setSavingGoal(false);
   };
 
   const regenerateApiKey = async () => {
@@ -154,11 +171,8 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-3xl mx-auto px-4 py-6">
-
-        {/* Back */}
-        <Link href="/" className="text-sm text-blue-600 hover:underline mb-4 inline-block">← Back to dashboard</Link>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="max-w-4xl mx-auto px-4 py-6">
 
         {/* Hero card */}
         <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-4 flex flex-col sm:flex-row items-center sm:items-start gap-5">
@@ -191,6 +205,50 @@ export default function ProfilePage() {
             </div>
           ))}
         </div>
+
+        {/* Daily goal card */}
+        {(() => {
+          const solved = stats.solvedToday;
+          const pct = Math.min(100, Math.round((solved / dailyGoal) * 100));
+          const done = solved >= dailyGoal;
+          return (
+            <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-700">Daily Goal</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {done
+                      ? "🎉 Goal reached! Keep going!"
+                      : `${solved} of ${dailyGoal} problems solved today`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => updateGoal(dailyGoal - 1)}
+                    disabled={dailyGoal <= 1 || savingGoal}
+                    className="w-7 h-7 rounded-full border border-gray-200 text-gray-500 text-sm font-bold hover:bg-gray-50 disabled:opacity-30 transition-colors"
+                  >−</button>
+                  <span className="text-lg font-bold text-gray-800 w-6 text-center">{dailyGoal}</span>
+                  <button
+                    onClick={() => updateGoal(dailyGoal + 1)}
+                    disabled={dailyGoal >= 20 || savingGoal}
+                    className="w-7 h-7 rounded-full border border-gray-200 text-gray-500 text-sm font-bold hover:bg-gray-50 disabled:opacity-30 transition-colors"
+                  >+</button>
+                </div>
+              </div>
+              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${done ? "bg-green-500" : "bg-blue-500"}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <div className="flex justify-between mt-1.5">
+                <span className="text-xs text-gray-400">{pct}% complete</span>
+                {done && <span className="text-xs text-green-600 font-medium">✓ Done for today</span>}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Progress overview */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">

@@ -42,6 +42,7 @@ model User {
   image         String?
   password      String?
   apiKey        String?  @unique
+  dailyGoal     Int      @default(3)
   accounts      Account[]
   sessions      Session[]
   progress      Progress[]
