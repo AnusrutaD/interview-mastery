@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { MASTERY_CONFIG, MASTERY_ORDER, DIFF_CONFIG } from "@/data/problems";
+import { reviewLabel } from "@/lib/spaced-repetition";
 
 function ProblemRow({ problem, onSetMastery, onSaveNote, note }) {
   const [open, setOpen] = useState(false);
@@ -18,7 +20,14 @@ function ProblemRow({ problem, onSetMastery, onSaveNote, note }) {
       >
         <td className="px-3 py-3 text-gray-400 dark:text-gray-600 text-xs">{problem.id}</td>
         <td className="px-3 py-3">
-          <span className="font-medium text-gray-800 dark:text-gray-200 text-sm block leading-snug">{problem.title}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-gray-800 dark:text-gray-200 text-sm leading-snug">{problem.title}</span>
+            {problem.due && (
+              <span className="text-[10px] font-semibold bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded-full shrink-0">
+                {reviewLabel(problem.mastery, problem.updatedAt)}
+              </span>
+            )}
+          </div>
           <span className="text-xs text-gray-400 dark:text-gray-500 sm:hidden">{problem.difficulty}</span>
         </td>
         <td className="px-3 py-3 hidden sm:table-cell">
@@ -44,15 +53,22 @@ function ProblemRow({ problem, onSetMastery, onSaveNote, note }) {
                 <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full">{problem.category}</span>
                 <span className={`text-xs font-medium px-2 py-1 rounded-full ${diff.bgColor} ${diff.textColor}`}>{problem.difficulty}</span>
                 <span className="text-xs text-gray-400 dark:text-gray-500">LC #{problem.leetcode}</span>
-                <a
-                  href={problem.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  className="ml-auto text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors"
-                >
-                  Open in LeetCode →
-                </a>
+                <div className="ml-auto flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                  <Link
+                    href={`/problems/${problem.id}`}
+                    className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors"
+                  >
+                    Detail →
+                  </Link>
+                  <a
+                    href={problem.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg transition-colors"
+                  >
+                    LeetCode →
+                  </a>
+                </div>
               </div>
 
               <div>

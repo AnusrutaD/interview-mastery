@@ -3,7 +3,7 @@ import { CATEGORIES, DIFFICULTIES, MASTERY_CONFIG } from "@/data/problems";
 
 const inputCls = "border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-600 transition-colors";
 
-export default function Filters({ search, category, difficulty, mastery, onChange }) {
+export default function Filters({ search, category, difficulty, mastery, dueOnly, onChange }) {
   return (
     <div className="flex flex-wrap gap-2 mb-3">
       <input
@@ -25,6 +25,18 @@ export default function Filters({ search, category, difficulty, mastery, onChang
           <option key={k} value={k}>{v.label}</option>
         ))}
       </select>
+
+      {/* Due for review toggle */}
+      <button
+        onClick={() => onChange("dueOnly", !dueOnly)}
+        className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors font-medium ${
+          dueOnly
+            ? "bg-red-500 border-red-500 text-white"
+            : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-300 dark:hover:border-red-700 hover:text-red-500"
+        }`}
+      >
+        🔴 Due
+      </button>
     </div>
   );
 }

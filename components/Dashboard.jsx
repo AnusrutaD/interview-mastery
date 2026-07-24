@@ -6,6 +6,7 @@ import StatsBar from "./StatsBar";
 import Filters from "./Filters";
 import ProblemTable from "./ProblemTable";
 import Stopwatch from "./Stopwatch";
+import { isDue } from "@/lib/spaced-repetition";
 
 const STORAGE_KEY = "lc-mastery-progress";
 const NOTES_KEY   = "lc-mastery-notes";
@@ -21,10 +22,11 @@ export default function Dashboard() {
   const { data: session, status } = useSession();
   const isLoggedIn = status === "authenticated";
 
-  const [progress, setProgress] = useState(() => load(STORAGE_KEY, {}));
-  const [notes,    setNotes]    = useState(() => load(NOTES_KEY, {}));
-  const [page,     setPageRaw]  = useState(1);
-  const [filters,  setFilters]  = useState({ search: "", category: "All", difficulty: "All", mastery: "All" });
+  const [progress,   setProgress]   = useState(() => load(STORAGE_KEY, {}));
+  const [notes,      setNotes]      = useState(() => load(NOTES_KEY, {}));
+  const [updatedAt,  setUpdatedAt]  = useState({});
+  const [page,       setPageRaw]    = useState(1);
+  const [filters,    setFilters]    = useState({ search: "", category: "All", difficulty: "All", mastery: "All", dueOnly: false });
   const [syncing,  setSyncing]  = useState(false);
 
   useEffect(() => {
@@ -37,9 +39,10 @@ export default function Dashboard() {
     setSyncing(true);
     fetch("/api/progress")
       .then(r => r.json())
-      .then(({ progress: p, notes: n }) => {
+      .then(({ progress: p, notes: n, updatedAt: u }) => {
         if (p) setProgress(p);
         if (n) setNotes(n);
+        if (u) setUpdatedAt(u);
       })
       .catch(console.error)
       .finally(() => setSyncing(false));
@@ -54,8 +57,13 @@ export default function Dashboard() {
   };
 
   const problems = useMemo(() =>
-    PROBLEMS.map(p => ({ ...p, mastery: progress[p.id] || "unseen" })),
-    [progress]
+    PROBLEMS.map(p => ({
+      ...p,
+      mastery: progress[p.id] || "unseen",
+      updatedAt: updatedAt[p.id] || null,
+      due: isDue(progress[p.id], updatedAt[p.id]),
+    })),
+    [progress, updatedAt]
   );
 
   const filtered = useMemo(() => {
@@ -63,6 +71,7 @@ export default function Dashboard() {
       if (filters.category !== "All" && p.category !== filters.category) return false;
       if (filters.difficulty !== "All" && p.difficulty !== filters.difficulty) return false;
       if (filters.mastery !== "All" && p.mastery !== filters.mastery) return false;
+      if (filters.dueOnly && !p.due) return false;
       if (filters.search) {
         const q = filters.search.toLowerCase();
         if (!p.title.toLowerCase().includes(q) && !String(p.leetcode).includes(q)) return false;

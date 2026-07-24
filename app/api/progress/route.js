@@ -39,17 +39,19 @@ export async function GET(request) {
 
   const rows = await prisma.progress.findMany({
     where: { userId },
-    select: { problemId: true, mastery: true, notes: true },
+    select: { problemId: true, mastery: true, notes: true, updatedAt: true },
   });
 
   const progress = {};
   const notes = {};
+  const updatedAt = {};
   for (const row of rows) {
     progress[row.problemId] = row.mastery;
     if (row.notes) notes[row.problemId] = row.notes;
+    updatedAt[row.problemId] = row.updatedAt;
   }
 
-  return NextResponse.json({ progress, notes }, { headers: CORS_HEADERS });
+  return NextResponse.json({ progress, notes, updatedAt }, { headers: CORS_HEADERS });
 }
 
 // POST /api/progress — upsert a single problem's progress
