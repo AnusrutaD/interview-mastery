@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { PROBLEMS } from "@/data/problems";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -58,9 +59,25 @@ export async function POST(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: CORS_HEADERS });
   }
 
-  const { problemId, mastery, notes } = await request.json();
+  const { problemId: rawId, leetcodeSlug, mastery, notes } = await request.json();
+
+  let problemId = rawId;
+
+  // If a LeetCode URL slug was provided, resolve it to the internal problem ID
+  if (!problemId && leetcodeSlug) {
+    const problem = PROBLEMS.find(p => p.url.includes(`/problems/${leetcodeSlug}/`));
+    if (problem) {
+      problemId = problem.id;
+    } else {
+      return NextResponse.json(
+        { error: `Problem not found in NeetCode 150: ${leetcodeSlug}` },
+        { status: 404, headers: CORS_HEADERS }
+      );
+    }
+  }
+
   if (problemId == null) {
-    return NextResponse.json({ error: "problemId required" }, { status: 400, headers: CORS_HEADERS });
+    return NextResponse.json({ error: "problemId or leetcodeSlug required" }, { status: 400, headers: CORS_HEADERS });
   }
 
   const row = await prisma.progress.upsert({
