@@ -62,19 +62,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="bg-white border border-gray-200 rounded-2xl p-8 w-full max-w-sm shadow-sm">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 w-full max-w-sm shadow-sm">
 
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Interview Mastery</h1>
-          <p className="text-sm text-gray-500">Sign in to sync your progress across devices</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">Interview Mastery</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Sign in to sync your progress across devices</p>
         </div>
 
         {/* OAuth buttons */}
         <div className="flex flex-col gap-3 mb-5">
           <button
             onClick={() => signIn("github", { callbackUrl: "/" })}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
               <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
@@ -83,7 +83,7 @@ export default function LoginPage() {
           </button>
           <button
             onClick={() => signIn("google", { callbackUrl: "/" })}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             <svg viewBox="0 0 24 24" className="w-5 h-5">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -103,10 +103,10 @@ export default function LoginPage() {
         </div>
 
         {/* Tab switcher */}
-        <div className="flex bg-gray-100 rounded-xl p-1 mb-5">
+        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-5">
           <button
             onClick={() => { setTab("login"); setError(""); }}
-            className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${tab === "login" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}
+            className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors ${tab === "login" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm" : "text-gray-500 dark:text-gray-400"}`}
           >
             Sign in
           </button>
@@ -128,7 +128,7 @@ export default function LoginPage() {
               value={form.name}
               onChange={handleChange}
               required
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-600"
             />
           )}
           <input
@@ -159,7 +159,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-xs text-gray-400 text-center mt-5">
+        <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-5">
           Your progress is saved and synced across all devices.
         </p>
       </div>

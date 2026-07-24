@@ -7,6 +7,7 @@ import Filters from "./Filters";
 import ProblemTable from "./ProblemTable";
 import Stopwatch from "./Stopwatch";
 import AuthButton from "./AuthButton";
+import ThemeToggle from "./ThemeToggle";
 
 const STORAGE_KEY = "lc-mastery-progress";
 const NOTES_KEY   = "lc-mastery-notes";
@@ -28,7 +29,11 @@ export default function Dashboard() {
   const [filters,  setFilters]  = useState({ search: "", category: "All", difficulty: "All", mastery: "All" });
   const [syncing,  setSyncing]  = useState(false);
 
-  // Load from API when user logs in
+  useEffect(() => {
+    const saved = load(PAGE_KEY, 1);
+    setPageRaw(saved);
+  }, []);
+
   useEffect(() => {
     if (!isLoggedIn) return;
     setSyncing(true);
@@ -107,53 +112,46 @@ export default function Dashboard() {
   const today  = new Date().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
       <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
 
         {/* Header */}
         <div className="flex items-start justify-between mb-5 gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">LeetCode Mastery</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{today} · NeetCode 150</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Interview Mastery</h1>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{today} · NeetCode 150</p>
           </div>
-          <div className="flex items-center gap-3">
-            {syncing && (
-              <span className="text-xs text-blue-500 animate-pulse">Syncing…</span>
-            )}
+          <div className="flex items-center gap-2">
+            {syncing && <span className="text-xs text-blue-500 animate-pulse">Syncing…</span>}
+            <ThemeToggle />
             <AuthButton />
             <div className="text-right shrink-0">
-              <p className="text-2xl font-bold text-blue-600">{solved}</p>
-              <p className="text-xs text-gray-400">/ 150</p>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{solved}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">/ 150</p>
             </div>
           </div>
         </div>
 
         {/* Auth nudge for guests */}
         {status === "unauthenticated" && (
-          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-            <p className="text-xs text-amber-700">
+          <div className="mb-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-xs text-amber-700 dark:text-amber-400">
               You&apos;re not signed in — progress is saved locally only.
             </p>
-            <a href="/login" className="text-xs font-semibold text-amber-800 underline whitespace-nowrap">
+            <a href="/login" className="text-xs font-semibold text-amber-800 dark:text-amber-300 underline whitespace-nowrap">
               Sign in →
             </a>
           </div>
         )}
 
-        {/* Stopwatch */}
         <Stopwatch />
-
-        {/* Stats */}
         <StatsBar problems={problems} />
-
-        {/* Filters */}
         <Filters {...filters} onChange={handleFilterChange} />
 
-        <p className="text-xs text-gray-400 mb-3 mt-1">
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-3 mt-1">
           {filtered.length} problems · Tap a row to expand · Click mastery to update
         </p>
 
-        {/* Table */}
         <ProblemTable
           problems={filtered}
           onSetMastery={setMastery}
