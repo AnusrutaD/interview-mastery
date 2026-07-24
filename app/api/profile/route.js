@@ -38,6 +38,9 @@ export async function GET() {
   const familiar = enriched.filter(p => p.mastery === "familiar").length;
   const learning = enriched.filter(p => p.mastery === "learning").length;
   const unseen = enriched.filter(p => p.mastery === "unseen").length;
+  // "attempted" = any non-unseen (learning + familiar + mastered) — drives the donut and topic bars
+  const attempted = mastered + familiar + learning;
+  // "solved" kept for backward compat (familiar + mastered) — shown separately if needed
   const solved = mastered + familiar;
 
   // By difficulty
@@ -46,7 +49,7 @@ export async function GET() {
     return {
       label: diff,
       total: set.length,
-      solved: set.filter(p => p.mastery === "mastered" || p.mastery === "familiar").length,
+      solved: set.filter(p => p.mastery !== "unseen").length,
       mastered: set.filter(p => p.mastery === "mastered").length,
     };
   });
@@ -56,7 +59,7 @@ export async function GET() {
   for (const p of enriched) {
     if (!catMap[p.category]) catMap[p.category] = { total: 0, solved: 0, mastered: 0 };
     catMap[p.category].total++;
-    if (p.mastery === "mastered" || p.mastery === "familiar") catMap[p.category].solved++;
+    if (p.mastery !== "unseen") catMap[p.category].solved++;
     if (p.mastery === "mastered") catMap[p.category].mastered++;
   }
   const byCategory = Object.entries(catMap)
@@ -107,7 +110,7 @@ export async function GET() {
 
   return NextResponse.json({
     user,
-    stats: { total, solved, mastered, familiar, learning, unseen, solvedToday, streak },
+    stats: { total, attempted, solved, mastered, familiar, learning, unseen, solvedToday, streak },
     byDifficulty,
     byCategory,
     recent,

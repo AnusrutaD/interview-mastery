@@ -139,7 +139,7 @@ export default function ProfilePage() {
     },
     {
       label: "Total Attempted",
-      value: stats.total - stats.unseen,
+      value: stats.attempted,
       icon: "✅",
       sub: `of ${stats.total}`,
       color: "text-green-700",
@@ -169,7 +169,7 @@ export default function ProfilePage() {
             <div className="flex flex-wrap gap-2 justify-center sm:justify-start mt-3">
               <span className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">NeetCode 150</span>
               <span className="text-xs bg-green-50 text-green-700 px-3 py-1 rounded-full font-medium">
-                {Math.round((stats.solved / stats.total) * 100)}% Complete
+                {Math.round((stats.attempted / stats.total) * 100)}% Complete
               </span>
               {stats.mastered > 0 && (
                 <span className="text-xs bg-purple-50 text-purple-700 px-3 py-1 rounded-full font-medium">
@@ -199,7 +199,7 @@ export default function ProfilePage() {
           <div className="bg-white border border-gray-200 rounded-2xl p-6">
             <h2 className="text-sm font-semibold text-gray-700 mb-4">Overall Progress</h2>
             <div className="flex items-center gap-6">
-              <CircleProgress solved={stats.solved} total={stats.total} />
+              <CircleProgress solved={stats.attempted} total={stats.total} />
               <div className="flex flex-col gap-2 flex-1">
                 {["mastered", "familiar", "learning", "unseen"].map(key => {
                   const cfg = MASTERY_COLOR[key];
