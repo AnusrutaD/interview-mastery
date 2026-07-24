@@ -70,9 +70,44 @@ export async function GET() {
     .slice(0, 10)
     .map(p => ({ id: p.id, title: p.title, difficulty: p.difficulty, mastery: p.mastery, updatedAt: p.updatedAt }));
 
+  // Solved today
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const solvedToday = progressRows.filter(
+    r => r.mastery !== "unseen" && new Date(r.updatedAt) >= todayStart
+  ).length;
+
+  // Streak — consecutive days with at least one solve (uses updatedAt as proxy)
+  const solveDays = new Set(
+    progressRows
+      .filter(r => r.mastery !== "unseen")
+      .map(r => {
+        const d = new Date(r.updatedAt);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      })
+  );
+
+  function dayKey(date) {
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  }
+
+  let streak = 0;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+
+  // If nothing solved today, start streak check from yesterday
+  if (!solveDays.has(dayKey(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  while (solveDays.has(dayKey(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
   return NextResponse.json({
     user,
-    stats: { total, solved, mastered, familiar, learning, unseen },
+    stats: { total, solved, mastered, familiar, learning, unseen, solvedToday, streak },
     byDifficulty,
     byCategory,
     recent,

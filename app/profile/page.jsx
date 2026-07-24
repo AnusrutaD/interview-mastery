@@ -122,6 +122,37 @@ export default function ProfilePage() {
   if (!data) return null;
   const { user, stats, byDifficulty, byCategory, recent } = data;
 
+  const statCards = [
+    {
+      label: "Solved Today",
+      value: stats.solvedToday,
+      icon: "🎯",
+      sub: stats.solvedToday === 1 ? "problem" : "problems",
+      color: stats.solvedToday > 0 ? "text-blue-700" : "text-gray-400",
+    },
+    {
+      label: "Current Streak",
+      value: stats.streak,
+      icon: stats.streak >= 7 ? "🔥" : stats.streak >= 3 ? "⚡" : "📅",
+      sub: stats.streak === 1 ? "day" : "days",
+      color: stats.streak >= 7 ? "text-orange-600" : stats.streak >= 3 ? "text-yellow-600" : "text-gray-500",
+    },
+    {
+      label: "Total Attempted",
+      value: stats.total - stats.unseen,
+      icon: "✅",
+      sub: `of ${stats.total}`,
+      color: "text-green-700",
+    },
+    {
+      label: "Mastered",
+      value: stats.mastered,
+      icon: "⭐",
+      sub: `of ${stats.total}`,
+      color: "text-purple-700",
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-6">
@@ -147,6 +178,18 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Stat cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          {statCards.map(card => (
+            <div key={card.label} className="bg-white border border-gray-200 rounded-2xl p-4 flex flex-col items-center text-center">
+              <span className="text-2xl mb-1">{card.icon}</span>
+              <span className={`text-3xl font-bold ${card.color}`}>{card.value}</span>
+              <span className="text-xs text-gray-400 mt-0.5">{card.sub}</span>
+              <span className="text-xs font-medium text-gray-500 mt-1">{card.label}</span>
+            </div>
+          ))}
         </div>
 
         {/* Progress overview */}
