@@ -97,10 +97,11 @@ export default function Dashboard() {
   const { data: session, status } = useSession();
   const isLoggedIn = status === "authenticated";
 
-  const [progress,   setProgress]   = useState(() => load(STORAGE_KEY, {}));
-  const [notes,      setNotes]      = useState(() => load(NOTES_KEY, {}));
-  const [updatedAt,  setUpdatedAt]  = useState({});
-  const [page,       setPageRaw]    = useState(1);
+  const [progress,      setProgress]      = useState(() => load(STORAGE_KEY, {}));
+  const [notes,         setNotes]         = useState(() => load(NOTES_KEY, {}));
+  const [updatedAt,     setUpdatedAt]     = useState({});
+  const [lastMasteryAt, setLastMasteryAt] = useState({});
+  const [page,          setPageRaw]       = useState(1);
   const [filters,    setFilters]    = useState({ search: "", category: "All", difficulty: "All", mastery: "All", dueOnly: false });
   const [syncing,  setSyncing]  = useState(false);
 
@@ -114,10 +115,11 @@ export default function Dashboard() {
     setSyncing(true);
     fetch("/api/progress")
       .then(r => r.json())
-      .then(({ progress: p, notes: n, updatedAt: u }) => {
+      .then(({ progress: p, notes: n, updatedAt: u, lastMasteryAt: lm }) => {
         if (p) setProgress(p);
         if (n) setNotes(n);
         if (u) setUpdatedAt(u);
+        if (lm) setLastMasteryAt(lm);
       })
       .catch(console.error)
       .finally(() => setSyncing(false));
@@ -240,7 +242,7 @@ export default function Dashboard() {
         )}
 
         <Stopwatch />
-        <StatsBar problems={problems} />
+        <StatsBar problems={problems} lastMasteryAt={lastMasteryAt} />
 
         {/* Topic cards */}
         <TopicGrid problems={problems} />

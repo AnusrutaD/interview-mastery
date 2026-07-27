@@ -39,21 +39,24 @@ export async function GET(request) {
 
   const rows = await prisma.progress.findMany({
     where: { userId },
-    select: { problemId: true, mastery: true, notes: true, updatedAt: true, repeatCount: true },
+    select: { problemId: true, mastery: true, notes: true, updatedAt: true, repeatCount: true, lastMasteryAt: true },
   });
 
   const progress = {};
   const notes = {};
   const updatedAt = {};
   const repeatCount = {};
+  const lastMasteryAt = {};
   for (const row of rows) {
     progress[row.problemId] = row.mastery;
     if (row.notes) notes[row.problemId] = row.notes;
     updatedAt[row.problemId] = row.updatedAt;
     repeatCount[row.problemId] = row.repeatCount ?? 0;
+    // Fall back to updatedAt for problems solved before lastMasteryAt was added
+    lastMasteryAt[row.problemId] = row.lastMasteryAt ?? row.updatedAt;
   }
 
-  return NextResponse.json({ progress, notes, updatedAt, repeatCount }, { headers: CORS_HEADERS });
+  return NextResponse.json({ progress, notes, updatedAt, repeatCount, lastMasteryAt }, { headers: CORS_HEADERS });
 }
 
 // POST /api/progress — upsert a single problem's progress
@@ -84,16 +87,28 @@ export async function POST(request) {
     return NextResponse.json({ error: "problemId or leetcodeSlug required" }, { status: 400, headers: CORS_HEADERS });
   }
 
-  // Only increment repeatCount when mastery is being set (not notes-only updates)
   const isMasteryUpdate = mastery !== undefined;
+  const now = new Date();
 
   const row = await prisma.progress.upsert({
     where: { userId_problemId: { userId, problemId } },
     update: {
-      ...(isMasteryUpdate && { mastery, repeatCount: { increment: 1 } }),
+      // Only touch mastery fields when mastery is explicitly set
+      ...(isMasteryUpdate && {
+        mastery,
+        repeatCount: { increment: 1 },
+        lastMasteryAt: now,
+      }),
       ...(notes !== undefined && { notes }),
     },
-    create: { userId, problemId, mastery: mastery ?? "unseen", notes: notes ?? null, repeatCount: 0 },
+    create: {
+      userId,
+      problemId,
+      mastery: mastery ?? "unseen",
+      notes: notes ?? null,
+      repeatCount: 0,
+      lastMasteryAt: isMasteryUpdate ? now : null,
+    },
   });
 
   return NextResponse.json({ ok: true, row }, { headers: CORS_HEADERS });

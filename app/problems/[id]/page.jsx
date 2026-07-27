@@ -119,7 +119,8 @@ export default function ProblemDetailPage({ params }) {
   const [mastery, setMasteryState] = useState("unseen");
   const [note, setNote] = useState("");
   const [savedNote, setSavedNote] = useState("");
-  const [updatedAt, setUpdatedAt] = useState(null);
+  const [updatedAt, setUpdatedAt] = useState(null);       // for spaced rep
+  const [lastMasteryAt, setLastMasteryAt] = useState(null); // for "Last Solved" display
   const [repeatCount, setRepeatCount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
@@ -129,10 +130,11 @@ export default function ProblemDetailPage({ params }) {
     if (status !== "authenticated") return;
     fetch("/api/progress")
       .then(r => r.json())
-      .then(({ progress, notes, updatedAt: ua, repeatCount: rc }) => {
+      .then(({ progress, notes, updatedAt: ua, lastMasteryAt: lm, repeatCount: rc }) => {
         if (progress?.[problem?.id]) setMasteryState(progress[problem.id]);
         if (notes?.[problem?.id]) { setNote(notes[problem.id]); setSavedNote(notes[problem.id]); }
         if (ua?.[problem?.id]) setUpdatedAt(ua[problem.id]);
+        if (lm?.[problem?.id]) setLastMasteryAt(lm[problem.id]);
         if (rc?.[problem?.id] != null) setRepeatCount(rc[problem.id]);
       });
   }, [status, problem?.id]);
@@ -162,6 +164,7 @@ export default function ProblemDetailPage({ params }) {
     });
     const data = await res.json();
     if (data.row?.updatedAt) setUpdatedAt(data.row.updatedAt);
+    if (data.row?.lastMasteryAt) setLastMasteryAt(data.row.lastMasteryAt);
     if (data.row?.repeatCount != null) setRepeatCount(data.row.repeatCount);
     setSaving(false);
   };
@@ -226,14 +229,14 @@ export default function ProblemDetailPage({ params }) {
           </div>
 
           {/* Last solved + repeat count */}
-          {updatedAt && (
+          {lastMasteryAt && (
             <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex-wrap">
               <div>
                 <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Last Solved</p>
                 <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  {new Date(updatedAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                  {new Date(lastMasteryAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", month: "short", day: "numeric", year: "numeric" })}
                   {" · "}
-                  {new Date(updatedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                  {new Date(lastMasteryAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
                 </p>
               </div>
               <div>

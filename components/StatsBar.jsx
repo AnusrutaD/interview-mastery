@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react";
 import { MASTERY_CONFIG } from "@/data/problems";
 import { getISTMidnight } from "@/lib/timezone";
 
-export default function StatsBar({ problems }) {
+export default function StatsBar({ problems, lastMasteryAt = {} }) {
   const { status } = useSession();
   const [dailyGoal, setDailyGoal] = useState(null);
 
@@ -26,10 +26,12 @@ export default function StatsBar({ problems }) {
       familiar:    problems.filter(p => p.mastery === "familiar").length,
       learning:    problems.filter(p => p.mastery === "learning").length,
       unseen:      problems.filter(p => p.mastery === "unseen").length,
-      // Only count problems where mastery was updated today (local time)
-      solvedToday: problems.filter(
-        p => p.mastery !== "unseen" && p.updatedAt && new Date(p.updatedAt) >= todayStart
-      ).length,
+      // Use lastMasteryAt (not updatedAt) so notes changes don't pollute the count
+      solvedToday: problems.filter(p => {
+        if (p.mastery === "unseen") return false;
+        const lm = lastMasteryAt[p.id];
+        return lm && new Date(lm) >= todayStart;
+      }).length,
     };
   }, [problems]);
 

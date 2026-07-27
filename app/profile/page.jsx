@@ -105,13 +105,14 @@ export default function ProfilePage() {
       .then(r => r.json())
       .then(d => setDailyGoal(d.dailyGoal ?? 3))
       .catch(console.error);
-    // Compute solvedToday client-side for correct local timezone
+    // Compute solvedToday client-side using lastMasteryAt for correct IST timezone
+    // lastMasteryAt only updates when mastery is intentionally set (not notes)
     fetch("/api/progress")
       .then(r => r.json())
-      .then(({ progress, updatedAt }) => {
+      .then(({ progress, lastMasteryAt }) => {
         const todayStart = getISTMidnight();
-        const count = Object.entries(updatedAt || {}).filter(([id, ua]) =>
-          progress?.[id] && progress[id] !== "unseen" && new Date(ua) >= todayStart
+        const count = Object.entries(lastMasteryAt || {}).filter(([id, lm]) =>
+          progress?.[id] && progress[id] !== "unseen" && new Date(lm) >= todayStart
         ).length;
         setSolvedTodayClient(count);
       })

@@ -17,7 +17,7 @@ export async function GET() {
 
   const progressRows = await prisma.progress.findMany({
     where: { userId: session.user.id },
-    select: { problemId: true, mastery: true, updatedAt: true, notes: true },
+    select: { problemId: true, mastery: true, updatedAt: true, lastMasteryAt: true, notes: true },
   });
 
   const progressMap = {};
@@ -79,11 +79,13 @@ export async function GET() {
   const validProblemIds = new Set(PROBLEMS.map(p => p.id));
   const validRows = progressRows.filter(r => validProblemIds.has(r.problemId));
 
-  // solvedToday — using IST midnight
+  // solvedToday — use lastMasteryAt (not updatedAt) so notes-only updates don't count
   const todayStartIST = getISTMidnight();
-  const solvedToday = validRows.filter(
-    r => r.mastery !== "unseen" && new Date(r.updatedAt) >= todayStartIST
-  ).length;
+  const solvedToday = validRows.filter(r => {
+    if (r.mastery === "unseen") return false;
+    const ts = r.lastMasteryAt ?? r.updatedAt; // fall back for old rows
+    return new Date(ts) >= todayStartIST;
+  }).length;
 
   // Streak — consecutive IST days with at least one solve
   const solveDays = new Set(
