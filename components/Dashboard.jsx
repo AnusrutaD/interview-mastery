@@ -154,9 +154,10 @@ export default function Dashboard() {
       ...p,
       mastery: progress[p.id] || "unseen",
       updatedAt: updatedAt[p.id] || null,
+      lastMasteryAt: lastMasteryAt[p.id] || null,
       due: isDue(progress[p.id], updatedAt[p.id]),
     })),
-    [progress, updatedAt]
+    [progress, updatedAt, lastMasteryAt]
   );
 
   const filtered = useMemo(() => {

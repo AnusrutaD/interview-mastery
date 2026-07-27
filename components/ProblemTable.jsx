@@ -53,6 +53,16 @@ function ProblemRow({ problem, onSetMastery, onSaveNote, note }) {
                 <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full">{problem.category}</span>
                 <span className={`text-xs font-medium px-2 py-1 rounded-full ${diff.bgColor} ${diff.textColor}`}>{problem.difficulty}</span>
                 <span className="text-xs text-gray-400 dark:text-gray-500">LC #{problem.leetcode}</span>
+                {problem.lastMasteryAt && (
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    · Last solved{" "}
+                    <span className="font-medium text-gray-600 dark:text-gray-300">
+                      {new Date(problem.lastMasteryAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" })}
+                      {" "}
+                      {new Date(problem.lastMasteryAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </span>
+                )}
                 <div className="ml-auto flex items-center gap-2" onClick={e => e.stopPropagation()}>
                   <Link
                     href={`/problems/${problem.id}`}
