@@ -27,22 +27,38 @@ export default function Navbar() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
 
-  // Hide full nav on login page — show only logo + theme toggle
   const isAuthPage = pathname === "/login";
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-950/90 backdrop-blur-sm">
       <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
 
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold select-none">
-            IM
-          </div>
-          <span className="font-semibold text-gray-900 dark:text-gray-100 hidden sm:block text-sm">
-            Interview Mastery
-          </span>
-        </Link>
+        {/* Left: logo + nav links */}
+        <div className="flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-2 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold select-none">
+              IM
+            </div>
+            <span className="font-semibold text-gray-900 dark:text-gray-100 hidden sm:block text-sm">
+              Interview Mastery
+            </span>
+          </Link>
+
+          {!isAuthPage && (
+            <nav className="flex items-center gap-1">
+              <Link
+                href="/topics"
+                className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                  pathname?.startsWith("/topics")
+                    ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
+                }`}
+              >
+                Topics
+              </Link>
+            </nav>
+          )}
+        </div>
 
         {/* Right controls */}
         <div className="flex items-center gap-2">
@@ -51,7 +67,6 @@ export default function Navbar() {
           {isAuthPage ? null : status === "loading" ? (
             <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
           ) : session?.user ? (
-            /* Signed-in state */
             <>
               <Link
                 href="/profile"
@@ -76,7 +91,6 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            /* Signed-out state */
             <>
               <Link
                 href="/login"

@@ -120,6 +120,7 @@ export default function ProblemDetailPage({ params }) {
   const [note, setNote] = useState("");
   const [savedNote, setSavedNote] = useState("");
   const [updatedAt, setUpdatedAt] = useState(null);
+  const [repeatCount, setRepeatCount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
   const [hintsOpen, setHintsOpen] = useState(false);
@@ -128,10 +129,11 @@ export default function ProblemDetailPage({ params }) {
     if (status !== "authenticated") return;
     fetch("/api/progress")
       .then(r => r.json())
-      .then(({ progress, notes, updatedAt: ua }) => {
+      .then(({ progress, notes, updatedAt: ua, repeatCount: rc }) => {
         if (progress?.[problem?.id]) setMasteryState(progress[problem.id]);
         if (notes?.[problem?.id]) { setNote(notes[problem.id]); setSavedNote(notes[problem.id]); }
         if (ua?.[problem?.id]) setUpdatedAt(ua[problem.id]);
+        if (rc?.[problem?.id] != null) setRepeatCount(rc[problem.id]);
       });
   }, [status, problem?.id]);
 
@@ -160,6 +162,7 @@ export default function ProblemDetailPage({ params }) {
     });
     const data = await res.json();
     if (data.row?.updatedAt) setUpdatedAt(data.row.updatedAt);
+    if (data.row?.repeatCount != null) setRepeatCount(data.row.repeatCount);
     setSaving(false);
   };
 
@@ -222,7 +225,29 @@ export default function ProblemDetailPage({ params }) {
             )}
           </div>
 
-          {/* Action links */}
+          {/* Last solved + repeat count */}
+          {updatedAt && (
+            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex-wrap">
+              <div>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Last Solved</p>
+                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  {new Date(updatedAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                  {" · "}
+                  {new Date(updatedAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Times Practiced</p>
+                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  {repeatCount} {repeatCount === 1 ? "time" : "times"}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Action links */}
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 mb-4">
           <div className="flex gap-2 flex-wrap">
             <a
               href={problem.url}

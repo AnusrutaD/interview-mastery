@@ -39,19 +39,21 @@ export async function GET(request) {
 
   const rows = await prisma.progress.findMany({
     where: { userId },
-    select: { problemId: true, mastery: true, notes: true, updatedAt: true },
+    select: { problemId: true, mastery: true, notes: true, updatedAt: true, repeatCount: true },
   });
 
   const progress = {};
   const notes = {};
   const updatedAt = {};
+  const repeatCount = {};
   for (const row of rows) {
     progress[row.problemId] = row.mastery;
     if (row.notes) notes[row.problemId] = row.notes;
     updatedAt[row.problemId] = row.updatedAt;
+    repeatCount[row.problemId] = row.repeatCount ?? 0;
   }
 
-  return NextResponse.json({ progress, notes, updatedAt }, { headers: CORS_HEADERS });
+  return NextResponse.json({ progress, notes, updatedAt, repeatCount }, { headers: CORS_HEADERS });
 }
 
 // POST /api/progress — upsert a single problem's progress
@@ -82,10 +84,16 @@ export async function POST(request) {
     return NextResponse.json({ error: "problemId or leetcodeSlug required" }, { status: 400, headers: CORS_HEADERS });
   }
 
+  // Only increment repeatCount when mastery is being set (not notes-only updates)
+  const isMasteryUpdate = mastery !== undefined;
+
   const row = await prisma.progress.upsert({
     where: { userId_problemId: { userId, problemId } },
-    update: { ...(mastery !== undefined && { mastery }), ...(notes !== undefined && { notes }) },
-    create: { userId, problemId, mastery: mastery ?? "unseen", notes: notes ?? null },
+    update: {
+      ...(isMasteryUpdate && { mastery, repeatCount: { increment: 1 } }),
+      ...(notes !== undefined && { notes }),
+    },
+    create: { userId, problemId, mastery: mastery ?? "unseen", notes: notes ?? null, repeatCount: 0 },
   });
 
   return NextResponse.json({ ok: true, row }, { headers: CORS_HEADERS });

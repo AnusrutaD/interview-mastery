@@ -1,12 +1,87 @@
 "use client";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { PROBLEMS, MASTERY_ORDER } from "@/data/problems";
+import Link from "next/link";
+import { PROBLEMS, MASTERY_ORDER, CATEGORY_ICONS, categoryToSlug } from "@/data/problems";
 import StatsBar from "./StatsBar";
 import Filters from "./Filters";
 import ProblemTable from "./ProblemTable";
 import Stopwatch from "./Stopwatch";
 import { isDue } from "@/lib/spaced-repetition";
+
+// Derive unique ordered categories from PROBLEMS
+const ALL_CATEGORIES = Array.from(new Set(PROBLEMS.map(p => p.category)));
+
+function TopicGrid({ problems }) {
+  const [collapsed, setCollapsed] = useState(true);
+
+  const stats = useMemo(() => {
+    return ALL_CATEGORIES.map(cat => {
+      const catProblems = problems.filter(p => p.category === cat);
+      const solved = catProblems.filter(p => p.mastery !== "unseen").length;
+      const due = catProblems.filter(p => p.due).length;
+      const total = catProblems.length;
+      const pct = total ? Math.round((solved / total) * 100) : 0;
+      return { cat, solved, total, pct, due, slug: categoryToSlug(cat) };
+    });
+  }, [problems]);
+
+  const SHOW = 6; // how many to show when collapsed
+  const visible = collapsed ? stats.slice(0, SHOW) : stats;
+
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          Study by Topic
+        </h2>
+        <Link
+          href="/topics"
+          className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+        >
+          View all →
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+        {visible.map(({ cat, solved, total, pct, due, slug }) => (
+          <Link
+            key={cat}
+            href={`/topics/${slug}`}
+            className="group relative flex items-center gap-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 rounded-xl px-3 py-2.5 transition-colors overflow-hidden"
+          >
+            {/* Progress fill */}
+            <div
+              className="absolute inset-y-0 left-0 bg-blue-50 dark:bg-blue-950/30 transition-all duration-500"
+              style={{ width: `${pct}%` }}
+            />
+            <span className="relative text-lg shrink-0">{CATEGORY_ICONS[cat] || "📌"}</span>
+            <div className="relative flex-1 min-w-0">
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate leading-tight">
+                {cat}
+              </p>
+              <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                {solved}/{total}
+                {due > 0 && (
+                  <span className="ml-1.5 text-red-500 font-semibold">· {due} due</span>
+                )}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {stats.length > SHOW && (
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+        >
+          {collapsed ? `Show all ${stats.length} topics ▼` : "Show less ▲"}
+        </button>
+      )}
+    </div>
+  );
+}
 
 const STORAGE_KEY = "lc-mastery-progress";
 const NOTES_KEY   = "lc-mastery-notes";
@@ -150,6 +225,10 @@ export default function Dashboard() {
 
         <Stopwatch />
         <StatsBar problems={problems} />
+
+        {/* Topic cards */}
+        <TopicGrid problems={problems} />
+
         <Filters {...filters} onChange={handleFilterChange} />
 
         <p className="text-xs text-gray-400 dark:text-gray-500 mb-3 mt-1">

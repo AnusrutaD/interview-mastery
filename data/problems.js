@@ -152,6 +152,40 @@ export const PROBLEMS = [
 ];
 
 export const CATEGORIES = ["All", ...Array.from(new Set(PROBLEMS.map(p => p.category)))];
+
+export const CATEGORY_ICONS = {
+  "Arrays & Hashing":          "📊",
+  "Two Pointers":               "👆",
+  "Sliding Window":             "🪟",
+  "Stack":                      "📚",
+  "Binary Search":              "🔍",
+  "Linked List":                "🔗",
+  "Trees":                      "🌳",
+  "Tries":                      "🌲",
+  "Heap / Priority Queue":      "⬆️",
+  "Backtracking":               "↩️",
+  "Graphs":                     "🕸️",
+  "Advanced Graphs":            "🗺️",
+  "1D Dynamic Programming":     "📈",
+  "2D Dynamic Programming":     "📉",
+  "Greedy":                     "⚡",
+  "Intervals":                  "📅",
+  "Math & Geometry":            "📐",
+  "Bit Manipulation":           "🔢",
+};
+
+export function categoryToSlug(cat) {
+  return cat.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
+export function slugToCategory(slug) {
+  return PROBLEMS.map(p => p.category)
+    .find(cat => categoryToSlug(cat) === slug) || null;
+}
 export const DIFFICULTIES = ["All", "Easy", "Medium", "Hard"];
 export const MASTERY_ORDER = ["unseen", "learning", "familiar", "mastered"];
 
