@@ -109,7 +109,7 @@ export default function Dashboard() {
     setPageRaw(saved);
   }, []);
 
-  useEffect(() => {
+  const fetchProgress = useCallback(() => {
     if (!isLoggedIn) return;
     setSyncing(true);
     fetch("/api/progress")
@@ -122,6 +122,22 @@ export default function Dashboard() {
       .catch(console.error)
       .finally(() => setSyncing(false));
   }, [isLoggedIn]);
+
+  // Initial load
+  useEffect(() => { fetchProgress(); }, [fetchProgress]);
+
+  // Refetch when tab becomes visible (user switches back from LeetCode tab)
+  // + poll every 30s as fallback
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const onVisible = () => { if (document.visibilityState === "visible") fetchProgress(); };
+    document.addEventListener("visibilitychange", onVisible);
+    const poll = setInterval(fetchProgress, 30_000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(poll);
+    };
+  }, [isLoggedIn, fetchProgress]);
 
   const setPage = (fn) => {
     setPageRaw(prev => {
