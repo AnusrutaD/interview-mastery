@@ -6,7 +6,6 @@ import { PROBLEMS, MASTERY_ORDER, CATEGORY_ICONS, categoryToSlug } from "@/data/
 import StatsBar from "./StatsBar";
 import Filters from "./Filters";
 import ProblemTable from "./ProblemTable";
-import Stopwatch from "./Stopwatch";
 import { isDue } from "@/lib/spaced-repetition";
 
 // Derive unique ordered categories from PROBLEMS
@@ -242,7 +241,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        <Stopwatch />
         <StatsBar problems={problems} lastMasteryAt={lastMasteryAt} />
 
         {/* Topic cards */}

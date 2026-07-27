@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { PROBLEMS, MASTERY_CONFIG, MASTERY_ORDER, DIFF_CONFIG } from "@/data/problems";
@@ -109,6 +109,19 @@ function timeAgo(date) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function fmtSeconds(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+function fmtTotalTime(s) {
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
 export default function ProblemDetailPage({ params }) {
   const { id } = use(params);
   const { data: session, status } = useSession();
@@ -119,23 +132,42 @@ export default function ProblemDetailPage({ params }) {
   const [mastery, setMasteryState] = useState("unseen");
   const [note, setNote] = useState("");
   const [savedNote, setSavedNote] = useState("");
-  const [updatedAt, setUpdatedAt] = useState(null);       // for spaced rep
-  const [lastMasteryAt, setLastMasteryAt] = useState(null); // for "Last Solved" display
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const [lastMasteryAt, setLastMasteryAt] = useState(null);
   const [repeatCount, setRepeatCount] = useState(0);
+  const [totalTimeSeconds, setTotalTimeSeconds] = useState(0);
   const [saving, setSaving] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
   const [hintsOpen, setHintsOpen] = useState(false);
+
+  // Timer state
+  const [elapsed, setElapsed] = useState(0);        // seconds this session
+  const [timerRunning, setTimerRunning] = useState(false);
+  const startRef = useRef(null);   // epoch ms when timer started
+  const tickRef  = useRef(null);   // setInterval id
+
+  // Start timer once auth is confirmed
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    startRef.current = Date.now();
+    setTimerRunning(true);
+    tickRef.current = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(tickRef.current);
+  }, [status]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
     fetch("/api/progress")
       .then(r => r.json())
-      .then(({ progress, notes, updatedAt: ua, lastMasteryAt: lm, repeatCount: rc }) => {
+      .then(({ progress, notes, updatedAt: ua, lastMasteryAt: lm, repeatCount: rc, totalTimeSeconds: tts }) => {
         if (progress?.[problem?.id]) setMasteryState(progress[problem.id]);
         if (notes?.[problem?.id]) { setNote(notes[problem.id]); setSavedNote(notes[problem.id]); }
         if (ua?.[problem?.id]) setUpdatedAt(ua[problem.id]);
         if (lm?.[problem?.id]) setLastMasteryAt(lm[problem.id]);
         if (rc?.[problem?.id] != null) setRepeatCount(rc[problem.id]);
+        if (tts?.[problem?.id] != null) setTotalTimeSeconds(tts[problem.id]);
       });
   }, [status, problem?.id]);
 
@@ -155,17 +187,26 @@ export default function ProblemDetailPage({ params }) {
   const interval = REVIEW_INTERVALS[mastery];
 
   const updateMastery = async (level) => {
+    // Stop timer and capture session seconds
+    clearInterval(tickRef.current);
+    setTimerRunning(false);
+    const sessionSeconds = elapsed;
+
     setMasteryState(level);
     setSaving(true);
     const res = await fetch("/api/progress", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ problemId: problem.id, mastery: level }),
+      body: JSON.stringify({ problemId: problem.id, mastery: level, timeSeconds: sessionSeconds }),
     });
     const data = await res.json();
     if (data.row?.updatedAt) setUpdatedAt(data.row.updatedAt);
     if (data.row?.lastMasteryAt) setLastMasteryAt(data.row.lastMasteryAt);
     if (data.row?.repeatCount != null) setRepeatCount(data.row.repeatCount);
+    // Update total time displayed
+    setTotalTimeSeconds(prev => prev + sessionSeconds);
+    // Reset session timer to 0 (stopped)
+    setElapsed(0);
     setSaving(false);
   };
 
@@ -228,23 +269,38 @@ export default function ProblemDetailPage({ params }) {
             )}
           </div>
 
-          {/* Last solved + repeat count */}
-          {lastMasteryAt && (
-            <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex-wrap">
+          {/* Timer row */}
+          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${timerRunning ? "bg-green-500 animate-pulse" : "bg-gray-300 dark:bg-gray-600"}`} />
               <div>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Last Solved</p>
-                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  {new Date(lastMasteryAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", month: "short", day: "numeric", year: "numeric" })}
-                  {" · "}
-                  {new Date(lastMasteryAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
-                </p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">This Session</p>
+                <p className="text-sm font-bold tabular-nums text-gray-800 dark:text-gray-200">{fmtSeconds(elapsed)}</p>
               </div>
+            </div>
+            {totalTimeSeconds > 0 && (
+              <div>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Total Time</p>
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">{fmtTotalTime(totalTimeSeconds)}</p>
+              </div>
+            )}
+            {repeatCount > 0 && (
               <div>
                 <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Times Practiced</p>
-                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  {repeatCount} {repeatCount === 1 ? "time" : "times"}
-                </p>
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">{repeatCount}×</p>
               </div>
+            )}
+          </div>
+
+          {/* Last solved */}
+          {lastMasteryAt && (
+            <div className="mt-2">
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Last Solved</p>
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                {new Date(lastMasteryAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                {" · "}
+                {new Date(lastMasteryAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
+              </p>
             </div>
           )}
         </div>
