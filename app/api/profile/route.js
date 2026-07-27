@@ -78,11 +78,12 @@ export async function GET() {
   const validProblemIds = new Set(PROBLEMS.map(p => p.id));
   const validRows = progressRows.filter(r => validProblemIds.has(r.problemId));
 
-  // Solved today
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  // solvedToday is computed client-side using browser timezone.
+  // Keep a UTC-based fallback here for server-rendered contexts.
+  const todayStartUTC = new Date();
+  todayStartUTC.setUTCHours(0, 0, 0, 0);
   const solvedToday = validRows.filter(
-    r => r.mastery !== "unseen" && new Date(r.updatedAt) >= todayStart
+    r => r.mastery !== "unseen" && new Date(r.updatedAt) >= todayStartUTC
   ).length;
 
   // Streak — consecutive days with at least one solve (uses updatedAt as proxy)

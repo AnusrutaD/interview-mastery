@@ -84,6 +84,7 @@ export default function ProfilePage() {
   const [regenerating, setRegenerating] = useState(false);
   const [dailyGoal, setDailyGoal] = useState(3);
   const [savingGoal, setSavingGoal] = useState(false);
+  const [solvedTodayClient, setSolvedTodayClient] = useState(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -102,6 +103,18 @@ export default function ProfilePage() {
     fetch("/api/user/settings")
       .then(r => r.json())
       .then(d => setDailyGoal(d.dailyGoal ?? 3))
+      .catch(console.error);
+    // Compute solvedToday client-side for correct local timezone
+    fetch("/api/progress")
+      .then(r => r.json())
+      .then(({ progress, updatedAt }) => {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const count = Object.entries(updatedAt || {}).filter(([id, ua]) =>
+          progress?.[id] && progress[id] !== "unseen" && new Date(ua) >= todayStart
+        ).length;
+        setSolvedTodayClient(count);
+      })
       .catch(console.error);
   }, [status]);
 
@@ -141,14 +154,16 @@ export default function ProfilePage() {
 
   if (!data) return null;
   const { user, stats, byDifficulty, byCategory, recent } = data;
+  // Use client-side computed value for correct local timezone; fall back to server value while loading
+  const solvedTodayDisplay = solvedTodayClient ?? stats.solvedToday;
 
   const statCards = [
     {
       label: "Solved Today",
-      value: stats.solvedToday,
+      value: solvedTodayDisplay,
       icon: "🎯",
-      sub: stats.solvedToday === 1 ? "problem" : "problems",
-      color: stats.solvedToday > 0 ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500",
+      sub: solvedTodayDisplay === 1 ? "problem" : "problems",
+      color: solvedTodayDisplay > 0 ? "text-blue-600 dark:text-blue-400" : "text-gray-400 dark:text-gray-500",
     },
     {
       label: "Current Streak",
@@ -173,7 +188,7 @@ export default function ProfilePage() {
     },
   ];
 
-  const solvedToday = stats.solvedToday;
+  const solvedToday = solvedTodayDisplay;
   const goalPct = Math.min(100, Math.round((solvedToday / dailyGoal) * 100));
   const goalDone = solvedToday >= dailyGoal;
 

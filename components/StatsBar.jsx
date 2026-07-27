@@ -6,36 +6,40 @@ import { MASTERY_CONFIG } from "@/data/problems";
 export default function StatsBar({ problems }) {
   const { status } = useSession();
   const [dailyGoal, setDailyGoal] = useState(null);
-  const [solvedToday, setSolvedToday] = useState(null);
 
-  // Fetch daily goal + today's count from the API (only when logged in)
+  // Fetch daily goal only (solved today is computed client-side for correct timezone)
   useEffect(() => {
     if (status !== "authenticated") return;
     fetch("/api/user/settings")
       .then(r => r.json())
       .then(d => setDailyGoal(d.dailyGoal ?? 3))
       .catch(() => {});
-    fetch("/api/profile")
-      .then(r => r.json())
-      .then(d => setSolvedToday(d.stats?.solvedToday ?? 0))
-      .catch(() => {});
   }, [status]);
 
-  const stats = useMemo(() => ({
-    total:    problems.length,
-    mastered: problems.filter(p => p.mastery === "mastered").length,
-    familiar: problems.filter(p => p.mastery === "familiar").length,
-    learning: problems.filter(p => p.mastery === "learning").length,
-    unseen:   problems.filter(p => p.mastery === "unseen").length,
-  }), [problems]);
+  const stats = useMemo(() => {
+    // Local midnight — correct for any timezone
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-  // Count all attempted problems (learning + familiar + mastered) as progress
+    return {
+      total:       problems.length,
+      mastered:    problems.filter(p => p.mastery === "mastered").length,
+      familiar:    problems.filter(p => p.mastery === "familiar").length,
+      learning:    problems.filter(p => p.mastery === "learning").length,
+      unseen:      problems.filter(p => p.mastery === "unseen").length,
+      // Only count problems where mastery was updated today (local time)
+      solvedToday: problems.filter(
+        p => p.mastery !== "unseen" && p.updatedAt && new Date(p.updatedAt) >= todayStart
+      ).length,
+    };
+  }, [problems]);
+
   const attempted = stats.mastered + stats.familiar + stats.learning;
   const pct = Math.round((attempted / stats.total) * 100);
 
   // Daily goal progress
   const goalCount = dailyGoal ?? 3;
-  const todayCount = solvedToday ?? 0;
+  const todayCount = stats.solvedToday;
   const goalPct = Math.min(100, Math.round((todayCount / goalCount) * 100));
   const goalDone = todayCount >= goalCount;
 
