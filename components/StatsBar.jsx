@@ -2,6 +2,7 @@
 import { useMemo, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { MASTERY_CONFIG } from "@/data/problems";
+import { getISTMidnight } from "@/lib/timezone";
 
 export default function StatsBar({ problems }) {
   const { status } = useSession();
@@ -17,9 +18,7 @@ export default function StatsBar({ problems }) {
   }, [status]);
 
   const stats = useMemo(() => {
-    // Local midnight — correct for any timezone
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const todayStart = getISTMidnight();
 
     return {
       total:       problems.length,

@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { PROBLEMS } from "@/data/problems";
 import { NextResponse } from "next/server";
+import { getISTMidnight, istDayKey } from "@/lib/timezone";
 
 export async function GET() {
   const session = await auth();
@@ -78,40 +79,29 @@ export async function GET() {
   const validProblemIds = new Set(PROBLEMS.map(p => p.id));
   const validRows = progressRows.filter(r => validProblemIds.has(r.problemId));
 
-  // solvedToday is computed client-side using browser timezone.
-  // Keep a UTC-based fallback here for server-rendered contexts.
-  const todayStartUTC = new Date();
-  todayStartUTC.setUTCHours(0, 0, 0, 0);
+  // solvedToday — using IST midnight
+  const todayStartIST = getISTMidnight();
   const solvedToday = validRows.filter(
-    r => r.mastery !== "unseen" && new Date(r.updatedAt) >= todayStartUTC
+    r => r.mastery !== "unseen" && new Date(r.updatedAt) >= todayStartIST
   ).length;
 
-  // Streak — consecutive days with at least one solve (uses updatedAt as proxy)
+  // Streak — consecutive IST days with at least one solve
   const solveDays = new Set(
     validRows
       .filter(r => r.mastery !== "unseen")
-      .map(r => {
-        const d = new Date(r.updatedAt);
-        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      })
+      .map(r => istDayKey(r.updatedAt))
   );
 
-  function dayKey(date) {
-    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-  }
-
   let streak = 0;
-  const cursor = new Date();
-  cursor.setHours(0, 0, 0, 0);
-
-  // If nothing solved today, start streak check from yesterday
-  if (!solveDays.has(dayKey(cursor))) {
-    cursor.setDate(cursor.getDate() - 1);
+  // Walk backward from today (IST), one day at a time
+  const cursorDate = new Date(todayStartIST);
+  if (!solveDays.has(istDayKey(cursorDate))) {
+    // Nothing today — check from yesterday
+    cursorDate.setDate(cursorDate.getDate() - 1);
   }
-
-  while (solveDays.has(dayKey(cursor))) {
+  while (solveDays.has(istDayKey(cursorDate))) {
     streak++;
-    cursor.setDate(cursor.getDate() - 1);
+    cursorDate.setDate(cursorDate.getDate() - 1);
   }
 
   return NextResponse.json({

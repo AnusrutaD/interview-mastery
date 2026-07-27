@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { getISTMidnight } from "@/lib/timezone";
 
 const DIFF_COLOR = {
   Easy:   { text: "text-green-600 dark:text-green-400",  bg: "bg-green-500" },
@@ -108,8 +109,7 @@ export default function ProfilePage() {
     fetch("/api/progress")
       .then(r => r.json())
       .then(({ progress, updatedAt }) => {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
+        const todayStart = getISTMidnight();
         const count = Object.entries(updatedAt || {}).filter(([id, ua]) =>
           progress?.[id] && progress[id] !== "unseen" && new Date(ua) >= todayStart
         ).length;
