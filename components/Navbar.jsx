@@ -46,16 +46,22 @@ export default function Navbar() {
 
           {!isAuthPage && (
             <nav className="flex items-center gap-1">
-              <Link
-                href="/topics"
-                className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                  pathname?.startsWith("/topics")
-                    ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-              >
-                Topics
-              </Link>
+              {[
+                { href: "/topics",   label: "Topics"   },
+                { href: "/activity", label: "Activity" },
+              ].map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                    pathname?.startsWith(href)
+                      ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
             </nav>
           )}
         </div>
