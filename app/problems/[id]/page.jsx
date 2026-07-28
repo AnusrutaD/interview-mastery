@@ -1,10 +1,11 @@
 "use client";
-import { useEffect, useState, useRef, use } from "react";
+import { useEffect, useState, useRef, useCallback, use } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { PROBLEMS, MASTERY_CONFIG, MASTERY_ORDER, DIFF_CONFIG } from "@/data/problems";
 import { reviewLabel, isDue, REVIEW_INTERVALS } from "@/lib/spaced-repetition";
 import MarkdownNote from "@/components/MarkdownNote";
+import { useProblemTimer } from "@/hooks/useProblemTimer";
 
 // Category hints shown to guide problem-solving approach
 const CATEGORY_HINTS = {
@@ -140,67 +141,107 @@ export default function ProblemDetailPage({ params }) {
   const [saving, setSaving] = useState(false);
   const [hintsOpen, setHintsOpen] = useState(false);
 
-  // ── Timer ──────────────────────────────────────────────────────────────────
-  // elapsed = accumulated seconds from past runs + seconds since runStart (if running)
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [displayElapsed, setDisplayElapsed] = useState(0); // what the UI shows
-  const [lastSessionSecs, setLastSessionSecs] = useState(null); // captured after submit
-  const accRef    = useRef(0);      // accumulated seconds before current run
-  const runStart  = useRef(null);   // Date.now() when current run started
-  const tickRef   = useRef(null);   // setInterval id
+  const [lastSessionSecs, setLastSessionSecs] = useState(null);
+  const [externalSync, setExternalSync] = useState(false); // banner: synced from LeetCode
 
-  // Helper to read current elapsed without relying on state
-  const getElapsed = () =>
-    accRef.current + (runStart.current ? Math.floor((Date.now() - runStart.current) / 1000) : 0);
+  // Persistent timer (survives reload + tab switches)
+  const timer = useProblemTimer(problem?.id);
+  const { running: timerRunning, display: displayElapsed, start: startTimer, pause: pauseTimer, stopAndCollect } = timer;
 
-  const startTimer = () => {
-    if (runStart.current) return; // already running
-    runStart.current = Date.now();
-    setTimerRunning(true);
-    tickRef.current = setInterval(() => {
-      setDisplayElapsed(getElapsed());
-    }, 1000);
-  };
+  const resetTimer = () => { timer.reset(); setLastSessionSecs(null); setExternalSync(false); };
 
-  const pauseTimer = () => {
-    if (!runStart.current) return;
-    clearInterval(tickRef.current);
-    accRef.current += Math.floor((Date.now() - runStart.current) / 1000);
-    runStart.current = null;
-    setDisplayElapsed(accRef.current);
-    setTimerRunning(false);
-  };
+  // Tracks the lastMasteryAt we already know about, so we can detect a NEW
+  // submission that happened elsewhere (LeetCode extension / another tab).
+  const knownMasteryAt = useRef(null);
+  const hydrated       = useRef(false);
 
-  const resetTimer = () => {
-    clearInterval(tickRef.current);
-    accRef.current  = 0;
-    runStart.current = null;
-    setDisplayElapsed(0);
-    setTimerRunning(false);
-    setLastSessionSecs(null);
-  };
-
-  // Auto-start when authenticated
+  // Auto-start the clock once we know the user is signed in
   useEffect(() => {
-    if (status !== "authenticated") return;
+    if (status !== "authenticated" || problem?.id == null) return;
     startTimer();
-    return () => { clearInterval(tickRef.current); runStart.current = null; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [status, problem?.id, startTimer]);
 
+  /**
+   * Pull latest progress. On the first call we just hydrate. On later calls we
+   * compare lastMasteryAt — if the server has a newer one, the problem was
+   * submitted outside this page (Chrome extension on LeetCode), so we stop the
+   * timer here and flush the elapsed seconds.
+   */
+  const syncProgress = useCallback(async () => {
+    if (status !== "authenticated" || problem?.id == null) return;
+    try {
+      const res = await fetch("/api/progress", { cache: "no-store" });
+      const { progress, notes, updatedAt: ua, lastMasteryAt: lm, repeatCount: rc, totalTimeSeconds: tts } = await res.json();
+      const pid = problem.id;
+
+      const serverMasteryAt = lm?.[pid] ?? null;
+
+      // ── First load: hydrate only, never treat as a new submission ──────────
+      if (!hydrated.current) {
+        hydrated.current = true;
+        knownMasteryAt.current = serverMasteryAt;
+        if (progress?.[pid]) setMasteryState(progress[pid]);
+        if (notes?.[pid]) { setNote(notes[pid]); setSavedNote(notes[pid]); }
+        if (ua?.[pid]) setUpdatedAt(ua[pid]);
+        if (serverMasteryAt) setLastMasteryAt(serverMasteryAt);
+        if (rc?.[pid] != null) setRepeatCount(rc[pid]);
+        if (tts?.[pid] != null) setTotalTimeSeconds(tts[pid]);
+        return;
+      }
+
+      // ── Detect submission that happened elsewhere ─────────────────────────
+      const isNewer =
+        serverMasteryAt &&
+        (!knownMasteryAt.current || new Date(serverMasteryAt) > new Date(knownMasteryAt.current));
+
+      if (isNewer) {
+        knownMasteryAt.current = serverMasteryAt;
+
+        // Stop the clock and capture the seconds spent on this attempt
+        const seconds = stopAndCollect();
+        setLastSessionSecs(seconds);
+        setExternalSync(true);
+
+        // Flush time WITHOUT a mastery field so the API does not double-count
+        // repeatCount or overwrite lastMasteryAt (see /api/progress POST).
+        if (seconds > 0) {
+          await fetch("/api/progress", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ problemId: pid, timeSeconds: seconds }),
+          }).catch(console.error);
+        }
+        setTotalTimeSeconds((tts?.[pid] ?? 0) + seconds);
+      } else if (tts?.[pid] != null) {
+        setTotalTimeSeconds(tts[pid]);
+      }
+
+      // Always mirror the latest server state
+      if (progress?.[pid]) setMasteryState(progress[pid]);
+      if (ua?.[pid]) setUpdatedAt(ua[pid]);
+      if (serverMasteryAt) setLastMasteryAt(serverMasteryAt);
+      if (rc?.[pid] != null) setRepeatCount(rc[pid]);
+    } catch (err) {
+      console.error("sync failed", err);
+    }
+  }, [status, problem?.id, stopAndCollect]);
+
+  // Initial hydrate
+  useEffect(() => { syncProgress(); }, [syncProgress]);
+
+  // Real-time sync: instant on tab focus (returning from LeetCode) + 10s poll
   useEffect(() => {
     if (status !== "authenticated") return;
-    fetch("/api/progress")
-      .then(r => r.json())
-      .then(({ progress, notes, updatedAt: ua, lastMasteryAt: lm, repeatCount: rc, totalTimeSeconds: tts }) => {
-        if (progress?.[problem?.id]) setMasteryState(progress[problem.id]);
-        if (notes?.[problem?.id]) { setNote(notes[problem.id]); setSavedNote(notes[problem.id]); }
-        if (ua?.[problem?.id]) setUpdatedAt(ua[problem.id]);
-        if (lm?.[problem?.id]) setLastMasteryAt(lm[problem.id]);
-        if (rc?.[problem?.id] != null) setRepeatCount(rc[problem.id]);
-        if (tts?.[problem?.id] != null) setTotalTimeSeconds(tts[problem.id]);
-      });
-  }, [status, problem?.id]);
+    const onVisible = () => { if (document.visibilityState === "visible") syncProgress(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", syncProgress);
+    const poll = setInterval(syncProgress, 10_000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", syncProgress);
+      clearInterval(poll);
+    };
+  }, [status, syncProgress]);
 
   if (!problem) {
     return (
@@ -218,14 +259,10 @@ export default function ProblemDetailPage({ params }) {
   const interval = REVIEW_INTERVALS[mastery];
 
   const updateMastery = async (level) => {
-    // Capture elapsed using refs (not stale state) then stop timer
-    const sessionSeconds = getElapsed();
-    pauseTimer();
+    // Stop the clock and capture seconds atomically (refs, never stale state)
+    const sessionSeconds = stopAndCollect();
     setLastSessionSecs(sessionSeconds);
-    // Reset for a fresh session after submit
-    accRef.current  = 0;
-    runStart.current = null;
-    setDisplayElapsed(0);
+    setExternalSync(false);
 
     setMasteryState(level);
     setSaving(true);
@@ -236,9 +273,14 @@ export default function ProblemDetailPage({ params }) {
     });
     const data = await res.json();
     if (data.row?.updatedAt) setUpdatedAt(data.row.updatedAt);
-    if (data.row?.lastMasteryAt) setLastMasteryAt(data.row.lastMasteryAt);
+    if (data.row?.lastMasteryAt) {
+      setLastMasteryAt(data.row.lastMasteryAt);
+      // Mark as known so the poller does not mistake our own write for an
+      // external submission and stop the timer a second time.
+      knownMasteryAt.current = data.row.lastMasteryAt;
+    }
     if (data.row?.repeatCount != null) setRepeatCount(data.row.repeatCount);
-    setTotalTimeSeconds(prev => prev + sessionSeconds);
+    if (data.row?.totalTimeSeconds != null) setTotalTimeSeconds(data.row.totalTimeSeconds);
     setSaving(false);
   };
 
@@ -302,13 +344,19 @@ export default function ProblemDetailPage({ params }) {
           {/* Timer row */}
           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
 
-            {/* Last session banner — shown after submit */}
+            {/* Last session banner — shown after submit (in-app OR from LeetCode) */}
             {lastSessionSecs !== null && (
               <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-xl">
                 <span className="text-green-600 dark:text-green-400 text-sm">✅</span>
                 <p className="text-xs font-semibold text-green-700 dark:text-green-300">
-                  Submitted in <span className="tabular-nums">{fmtSeconds(lastSessionSecs)}</span>
+                  {externalSync ? "Accepted on LeetCode" : "Submitted"} in{" "}
+                  <span className="tabular-nums">{fmtSeconds(lastSessionSecs)}</span>
                 </p>
+                {externalSync && (
+                  <span className="text-[10px] text-green-600/70 dark:text-green-400/70 ml-auto">
+                    auto-synced
+                  </span>
+                )}
               </div>
             )}
 

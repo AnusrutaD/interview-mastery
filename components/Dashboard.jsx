@@ -100,6 +100,8 @@ export default function Dashboard() {
   const [notes,         setNotes]         = useState(() => load(NOTES_KEY, {}));
   const [updatedAt,     setUpdatedAt]     = useState({});
   const [lastMasteryAt, setLastMasteryAt] = useState({});
+  const [totalTime,     setTotalTime]     = useState({});
+  const [repeatCounts,  setRepeatCounts]  = useState({});
   const [page,          setPageRaw]       = useState(1);
   const [filters,    setFilters]    = useState({ search: "", category: "All", difficulty: "All", mastery: "All", dueOnly: false });
   const [syncing,  setSyncing]  = useState(false);
@@ -114,11 +116,13 @@ export default function Dashboard() {
     setSyncing(true);
     fetch("/api/progress")
       .then(r => r.json())
-      .then(({ progress: p, notes: n, updatedAt: u, lastMasteryAt: lm }) => {
+      .then(({ progress: p, notes: n, updatedAt: u, lastMasteryAt: lm, totalTimeSeconds: tt, repeatCount: rc }) => {
         if (p) setProgress(p);
         if (n) setNotes(n);
         if (u) setUpdatedAt(u);
         if (lm) setLastMasteryAt(lm);
+        if (tt) setTotalTime(tt);
+        if (rc) setRepeatCounts(rc);
       })
       .catch(console.error)
       .finally(() => setSyncing(false));
@@ -154,9 +158,11 @@ export default function Dashboard() {
       mastery: progress[p.id] || "unseen",
       updatedAt: updatedAt[p.id] || null,
       lastMasteryAt: lastMasteryAt[p.id] || null,
+      totalTimeSeconds: totalTime[p.id] || 0,
+      repeatCount: repeatCounts[p.id] || 0,
       due: isDue(progress[p.id], updatedAt[p.id]),
     })),
-    [progress, updatedAt, lastMasteryAt]
+    [progress, updatedAt, lastMasteryAt, totalTime, repeatCounts]
   );
 
   const filtered = useMemo(() => {

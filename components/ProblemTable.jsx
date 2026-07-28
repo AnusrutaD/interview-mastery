@@ -4,6 +4,15 @@ import Link from "next/link";
 import { MASTERY_CONFIG, MASTERY_ORDER, DIFF_CONFIG } from "@/data/problems";
 import { reviewLabel } from "@/lib/spaced-repetition";
 
+function fmtDuration(s) {
+  if (!s) return "0m";
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  return m % 60 ? `${h}h ${m % 60}m` : `${h}h`;
+}
+
 function ProblemRow({ problem, onSetMastery, onSaveNote, note }) {
   const [open, setOpen] = useState(false);
   const [localNote, setLocalNote] = useState(note || "");
@@ -61,6 +70,19 @@ function ProblemRow({ problem, onSetMastery, onSaveNote, note }) {
                       {" "}
                       {new Date(problem.lastMasteryAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}
                     </span>
+                  </span>
+                )}
+                {problem.totalTimeSeconds > 0 && (
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    · ⏱{" "}
+                    <span className="font-medium text-gray-600 dark:text-gray-300">
+                      {fmtDuration(problem.totalTimeSeconds)}
+                    </span>
+                    {problem.repeatCount > 1 && (
+                      <span className="text-gray-400 dark:text-gray-600">
+                        {" "}({fmtDuration(Math.round(problem.totalTimeSeconds / problem.repeatCount))} avg)
+                      </span>
+                    )}
                   </span>
                 )}
                 <div className="ml-auto flex items-center gap-2" onClick={e => e.stopPropagation()}>
