@@ -140,21 +140,52 @@ export default function ProblemDetailPage({ params }) {
   const [saving, setSaving] = useState(false);
   const [hintsOpen, setHintsOpen] = useState(false);
 
-  // Timer state
-  const [elapsed, setElapsed] = useState(0);        // seconds this session
+  // ── Timer ──────────────────────────────────────────────────────────────────
+  // elapsed = accumulated seconds from past runs + seconds since runStart (if running)
   const [timerRunning, setTimerRunning] = useState(false);
-  const startRef = useRef(null);   // epoch ms when timer started
-  const tickRef  = useRef(null);   // setInterval id
+  const [displayElapsed, setDisplayElapsed] = useState(0); // what the UI shows
+  const [lastSessionSecs, setLastSessionSecs] = useState(null); // captured after submit
+  const accRef    = useRef(0);      // accumulated seconds before current run
+  const runStart  = useRef(null);   // Date.now() when current run started
+  const tickRef   = useRef(null);   // setInterval id
 
-  // Start timer once auth is confirmed
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    startRef.current = Date.now();
+  // Helper to read current elapsed without relying on state
+  const getElapsed = () =>
+    accRef.current + (runStart.current ? Math.floor((Date.now() - runStart.current) / 1000) : 0);
+
+  const startTimer = () => {
+    if (runStart.current) return; // already running
+    runStart.current = Date.now();
     setTimerRunning(true);
     tickRef.current = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+      setDisplayElapsed(getElapsed());
     }, 1000);
-    return () => clearInterval(tickRef.current);
+  };
+
+  const pauseTimer = () => {
+    if (!runStart.current) return;
+    clearInterval(tickRef.current);
+    accRef.current += Math.floor((Date.now() - runStart.current) / 1000);
+    runStart.current = null;
+    setDisplayElapsed(accRef.current);
+    setTimerRunning(false);
+  };
+
+  const resetTimer = () => {
+    clearInterval(tickRef.current);
+    accRef.current  = 0;
+    runStart.current = null;
+    setDisplayElapsed(0);
+    setTimerRunning(false);
+    setLastSessionSecs(null);
+  };
+
+  // Auto-start when authenticated
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    startTimer();
+    return () => { clearInterval(tickRef.current); runStart.current = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   useEffect(() => {
@@ -187,10 +218,14 @@ export default function ProblemDetailPage({ params }) {
   const interval = REVIEW_INTERVALS[mastery];
 
   const updateMastery = async (level) => {
-    // Stop timer and capture session seconds
-    clearInterval(tickRef.current);
-    setTimerRunning(false);
-    const sessionSeconds = elapsed;
+    // Capture elapsed using refs (not stale state) then stop timer
+    const sessionSeconds = getElapsed();
+    pauseTimer();
+    setLastSessionSecs(sessionSeconds);
+    // Reset for a fresh session after submit
+    accRef.current  = 0;
+    runStart.current = null;
+    setDisplayElapsed(0);
 
     setMasteryState(level);
     setSaving(true);
@@ -203,10 +238,7 @@ export default function ProblemDetailPage({ params }) {
     if (data.row?.updatedAt) setUpdatedAt(data.row.updatedAt);
     if (data.row?.lastMasteryAt) setLastMasteryAt(data.row.lastMasteryAt);
     if (data.row?.repeatCount != null) setRepeatCount(data.row.repeatCount);
-    // Update total time displayed
     setTotalTimeSeconds(prev => prev + sessionSeconds);
-    // Reset session timer to 0 (stopped)
-    setElapsed(0);
     setSaving(false);
   };
 
@@ -268,31 +300,75 @@ export default function ProblemDetailPage({ params }) {
           </div>
 
           {/* Timer row */}
-          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${timerRunning ? "bg-green-500 animate-pulse" : "bg-gray-300 dark:bg-gray-600"}`} />
-              <div>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">This Session</p>
-                <p className="text-sm font-bold tabular-nums text-gray-800 dark:text-gray-200">{fmtSeconds(elapsed)}</p>
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+
+            {/* Last session banner — shown after submit */}
+            {lastSessionSecs !== null && (
+              <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-xl">
+                <span className="text-green-600 dark:text-green-400 text-sm">✅</span>
+                <p className="text-xs font-semibold text-green-700 dark:text-green-300">
+                  Submitted in <span className="tabular-nums">{fmtSeconds(lastSessionSecs)}</span>
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Live clock */}
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${
+                  timerRunning ? "bg-green-500 animate-pulse" : "bg-gray-300 dark:bg-gray-600"
+                }`} />
+                <div>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">
+                    {timerRunning ? "Solving" : "Paused"}
+                  </p>
+                  <p className="text-lg font-bold tabular-nums text-gray-900 dark:text-gray-100 leading-tight">
+                    {fmtSeconds(displayElapsed)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={timerRunning ? pauseTimer : startTimer}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+                    timerRunning
+                      ? "bg-yellow-50 dark:bg-yellow-950/40 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/60"
+                      : "bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/60"
+                  }`}
+                >
+                  {timerRunning ? "⏸ Pause" : "▶ Resume"}
+                </button>
+                <button
+                  onClick={resetTimer}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  ↺ Reset
+                </button>
+              </div>
+
+              {/* Totals */}
+              <div className="flex items-center gap-4 ml-auto">
+                {totalTimeSeconds > 0 && (
+                  <div className="text-right">
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Total</p>
+                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">{fmtTotalTime(totalTimeSeconds)}</p>
+                  </div>
+                )}
+                {repeatCount > 0 && (
+                  <div className="text-right">
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Sessions</p>
+                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">{repeatCount}×</p>
+                  </div>
+                )}
               </div>
             </div>
-            {totalTimeSeconds > 0 && (
-              <div>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Total Time</p>
-                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">{fmtTotalTime(totalTimeSeconds)}</p>
-              </div>
-            )}
-            {repeatCount > 0 && (
-              <div>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Times Practiced</p>
-                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">{repeatCount}×</p>
-              </div>
-            )}
           </div>
 
           {/* Last solved */}
           {lastMasteryAt && (
-            <div className="mt-2">
+            <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-800">
               <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">Last Solved</p>
               <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                 {new Date(lastMasteryAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", month: "short", day: "numeric", year: "numeric" })}
