@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { PROBLEMS, MASTERY_CONFIG, MASTERY_ORDER, DIFF_CONFIG } from "@/data/problems";
 import { reviewLabel, isDue, REVIEW_INTERVALS } from "@/lib/spaced-repetition";
+import MarkdownNote from "@/components/MarkdownNote";
 
 // Category hints shown to guide problem-solving approach
 const CATEGORY_HINTS = {
@@ -137,7 +138,6 @@ export default function ProblemDetailPage({ params }) {
   const [repeatCount, setRepeatCount] = useState(0);
   const [totalTimeSeconds, setTotalTimeSeconds] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [noteSaved, setNoteSaved] = useState(false);
   const [hintsOpen, setHintsOpen] = useState(false);
 
   // Timer state
@@ -220,8 +220,6 @@ export default function ProblemDetailPage({ params }) {
     });
     setSavedNote(note);
     setSaving(false);
-    setNoteSaved(true);
-    setTimeout(() => setNoteSaved(false), 2000);
   };
 
   return (
@@ -393,32 +391,14 @@ export default function ProblemDetailPage({ params }) {
           </div>
         )}
 
-        {/* Notes */}
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">My Notes</h2>
-            {noteSaved && <span className="text-xs text-green-500">Saved ✓</span>}
-          </div>
-          <textarea
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            onBlur={saveNote}
-            placeholder="Approach, time complexity, edge cases, gotchas…"
-            rows={6}
-            disabled={status !== "authenticated"}
-            className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 transition-colors"
-          />
-          <div className="flex items-center justify-between mt-2">
-            <p className="text-xs text-gray-400 dark:text-gray-500">Auto-saved when you click away</p>
-            <button
-              onClick={saveNote}
-              disabled={note === savedNote || status !== "authenticated"}
-              className="text-xs font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg transition-colors"
-            >
-              Save
-            </button>
-          </div>
-        </div>
+        {/* Notes — Markdown editor */}
+        <MarkdownNote
+          value={note}
+          onChange={setNote}
+          onSave={saveNote}
+          saving={saving}
+          disabled={status !== "authenticated"}
+        />
 
       </div>
     </div>
