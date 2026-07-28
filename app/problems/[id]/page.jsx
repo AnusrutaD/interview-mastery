@@ -111,6 +111,10 @@ function timeAgo(date) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+// A session shorter than this is noise (page opened and submitted instantly,
+// extension echo, double-fire). We neither record nor display such timings.
+const MIN_SESSION_SECONDS = 5;
+
 function fmtSeconds(s) {
   const m = Math.floor(s / 60);
   const sec = s % 60;
@@ -154,6 +158,10 @@ export default function ProblemDetailPage({ params }) {
   // submission that happened elsewhere (LeetCode extension / another tab).
   const knownMasteryAt = useRef(null);
   const hydrated       = useRef(false);
+  // When this page instance mounted. A submission is only "ours to time" if it
+  // happened AFTER we started counting — otherwise we'd claim credit (0:00) for
+  // a solve that finished before the page was even open.
+  const mountedAt      = useRef(Date.now());
 
   // Auto-start the clock once we know the user is signed in
   useEffect(() => {
@@ -194,24 +202,33 @@ export default function ProblemDetailPage({ params }) {
         serverMasteryAt &&
         (!knownMasteryAt.current || new Date(serverMasteryAt) > new Date(knownMasteryAt.current));
 
+      // Only claim to have timed it if the submission landed after we started
+      // counting. Guards against an extension sync racing page hydration.
+      const timedByUs = isNewer && new Date(serverMasteryAt).getTime() >= mountedAt.current;
+
       if (isNewer) {
         knownMasteryAt.current = serverMasteryAt;
 
-        // Stop the clock and capture the seconds spent on this attempt
         const seconds = stopAndCollect();
-        setLastSessionSecs(seconds);
+        const valid   = timedByUs && seconds >= MIN_SESSION_SECONDS;
+
+        // Show the duration only when we genuinely measured it; otherwise the
+        // banner just acknowledges the sync without a bogus 0:00.
+        setLastSessionSecs(valid ? seconds : null);
         setExternalSync(true);
 
         // Flush time WITHOUT a mastery field so the API does not double-count
         // repeatCount or overwrite lastMasteryAt (see /api/progress POST).
-        if (seconds > 0) {
+        if (valid) {
           await fetch("/api/progress", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ problemId: pid, timeSeconds: seconds }),
           }).catch(console.error);
+          setTotalTimeSeconds((tts?.[pid] ?? 0) + seconds);
+        } else if (tts?.[pid] != null) {
+          setTotalTimeSeconds(tts[pid]);
         }
-        setTotalTimeSeconds((tts?.[pid] ?? 0) + seconds);
       } else if (tts?.[pid] != null) {
         setTotalTimeSeconds(tts[pid]);
       }
@@ -261,7 +278,8 @@ export default function ProblemDetailPage({ params }) {
   const updateMastery = async (level) => {
     // Stop the clock and capture seconds atomically (refs, never stale state)
     const sessionSeconds = stopAndCollect();
-    setLastSessionSecs(sessionSeconds);
+    const valid = sessionSeconds >= MIN_SESSION_SECONDS;
+    setLastSessionSecs(valid ? sessionSeconds : null);
     setExternalSync(false);
 
     setMasteryState(level);
@@ -269,7 +287,11 @@ export default function ProblemDetailPage({ params }) {
     const res = await fetch("/api/progress", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ problemId: problem.id, mastery: level, timeSeconds: sessionSeconds }),
+      body: JSON.stringify({
+        problemId: problem.id,
+        mastery: level,
+        ...(valid && { timeSeconds: sessionSeconds }),
+      }),
     });
     const data = await res.json();
     if (data.row?.updatedAt) setUpdatedAt(data.row.updatedAt);
@@ -345,15 +367,21 @@ export default function ProblemDetailPage({ params }) {
           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
 
             {/* Last session banner — shown after submit (in-app OR from LeetCode) */}
-            {lastSessionSecs !== null && (
+            {(lastSessionSecs !== null || externalSync) && (
               <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-xl">
                 <span className="text-green-600 dark:text-green-400 text-sm">✅</span>
                 <p className="text-xs font-semibold text-green-700 dark:text-green-300">
-                  {externalSync ? "Accepted on LeetCode" : "Submitted"} in{" "}
-                  <span className="tabular-nums">{fmtSeconds(lastSessionSecs)}</span>
+                  {externalSync ? "Accepted on LeetCode" : "Submitted"}
+                  {lastSessionSecs !== null ? (
+                    <> in <span className="tabular-nums">{fmtSeconds(lastSessionSecs)}</span></>
+                  ) : (
+                    <span className="font-normal text-green-600/70 dark:text-green-400/70">
+                      {" "}· not timed on this page
+                    </span>
+                  )}
                 </p>
                 {externalSync && (
-                  <span className="text-[10px] text-green-600/70 dark:text-green-400/70 ml-auto">
+                  <span className="text-[10px] text-green-600/70 dark:text-green-400/70 ml-auto shrink-0">
                     auto-synced
                   </span>
                 )}
