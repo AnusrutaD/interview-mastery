@@ -1,7 +1,7 @@
 "use client";
-import { use, useMemo, useState } from "react";
+import { Suspense, use, useMemo, useState } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, useSearchParams } from "next/navigation";
 import { MASTERY_CONFIG } from "@/core/domain/mastery";
 import { reviewIntervalFor } from "@/core/domain/review";
 import { formatDateWithWeekday, formatRelative, formatTime } from "@/core/time/format";
@@ -9,9 +9,10 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { DifficultyBadge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { categoryHints } from "@/data/categories";
-import { getProblemById } from "@/data/problems";
+import { getProblemById, slugToCategory } from "@/data/problems";
 import { MarkdownNote } from "@/features/notes/components/MarkdownNote";
 import { MasterySelector } from "@/features/problems/components/MasterySelector";
+import { ProblemNavigator } from "@/features/problems/components/ProblemNavigator";
 import { useProblemSession } from "@/features/progress/hooks/useProblemSession";
 import { SolveTimer } from "@/features/timer/components/SolveTimer";
 import { cn } from "@/lib/cn";
@@ -32,12 +33,13 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link
-          href="/"
-          className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors"
-        >
-          ← Back to Dashboard
-        </Link>
+        <Suspense fallback={null}>
+          <ScopedBackLink />
+        </Suspense>
+
+        <Suspense fallback={null}>
+          <ScopedNavigator problemId={problem.id} variant="bar" />
+        </Suspense>
 
         {error && (
           <div
@@ -177,8 +179,60 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
           saving={saving}
           disabled={!isAuthenticated}
         />
+
+        <Suspense fallback={null}>
+          <ScopedNavigator problemId={problem.id} variant="cards" />
+        </Suspense>
+
+        <p className="text-[10px] text-gray-300 dark:text-gray-700 text-center mt-3">
+          Tip: use ← and → to move between problems
+        </p>
       </div>
     </div>
+  );
+}
+
+/**
+ * Reads the `?from=<category-slug>` scope written by the topic pages.
+ *
+ * `useSearchParams` opts a route into client-side rendering, so both consumers
+ * sit behind Suspense to keep the rest of the page statically renderable.
+ */
+function useScope() {
+  const params = useSearchParams();
+  const slug = params.get("from");
+  const category = slug ? slugToCategory(slug) : null;
+  return { slug: category ? slug! : undefined, category: category ?? undefined };
+}
+
+function ScopedNavigator({
+  problemId,
+  variant,
+}: {
+  problemId: number;
+  variant: "bar" | "cards";
+}) {
+  const { slug, category } = useScope();
+  return (
+    <ProblemNavigator
+      problemId={problemId}
+      category={category}
+      scopeParam={slug}
+      variant={variant}
+    />
+  );
+}
+
+/** Returns the user to wherever they came from, not always the dashboard. */
+function ScopedBackLink() {
+  const { slug, category } = useScope();
+  return (
+    <Link
+      href={category ? `/topics/${slug}` : "/"}
+      className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors"
+    >
+      ← Back to {category ?? "Dashboard"}
+    </Link>
   );
 }
 

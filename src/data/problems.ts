@@ -210,3 +210,43 @@ const CATEGORY_BY_SLUG: ReadonlyMap<string, string> = new Map(
 export function slugToCategory(slug: string): string | null {
   return CATEGORY_BY_SLUG.get(slug) ?? null;
 }
+
+/* ── Sequential navigation ────────────────────────────────────────────────── */
+
+export interface ProblemNeighbours {
+  previous: Problem | null;
+  next: Problem | null;
+  /** 1-based position within the active sequence. */
+  position: number;
+  total: number;
+}
+
+const EMPTY_NEIGHBOURS: ProblemNeighbours = {
+  previous: null,
+  next: null,
+  position: 0,
+  total: 0,
+};
+
+/**
+ * Adjacent problems in study order.
+ *
+ * Passing a `category` keeps navigation inside that topic, so a user working
+ * through "Trees" is not thrown into "Tries" at the boundary. Without it,
+ * navigation walks the full NeetCode 150 in curriculum order.
+ *
+ * Deliberately does not wrap around: reaching either end disables the button
+ * rather than silently looping, which would make position meaningless.
+ */
+export function getNeighbours(problemId: number, category?: string): ProblemNeighbours {
+  const sequence = category ? getProblemsByCategory(category) : PROBLEMS;
+  const index = sequence.findIndex((p) => p.id === problemId);
+  if (index === -1) return EMPTY_NEIGHBOURS;
+
+  return {
+    previous: index > 0 ? sequence[index - 1] : null,
+    next: index < sequence.length - 1 ? sequence[index + 1] : null,
+    position: index + 1,
+    total: sequence.length,
+  };
+}

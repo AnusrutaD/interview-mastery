@@ -109,7 +109,7 @@ export default function TopicPage({ params }: { params: Promise<{ category: stri
                     <DifficultyBadge difficulty={next.difficulty} size="xs" />
                   </div>
                   <Link
-                    href={`/problems/${next.id}`}
+                    href={`/problems/${next.id}?from=${slug}`}
                     className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors shrink-0"
                   >
                     Start →
@@ -136,7 +136,7 @@ export default function TopicPage({ params }: { params: Promise<{ category: stri
                         </span>
                         <DifficultyBadge difficulty={problem.difficulty} size="xs" />
                         <Link
-                          href={`/problems/${problem.id}`}
+                          href={`/problems/${problem.id}?from=${slug}`}
                           className="text-sm font-medium text-gray-800 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                         >
                           {problem.title}
