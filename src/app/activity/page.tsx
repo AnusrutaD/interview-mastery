@@ -54,6 +54,7 @@ export default function ActivityPage() {
       Easy: 0,
       Medium: 0,
       Hard: 0,
+      unsolved: 0,
       learning: 0,
       familiar: 0,
       mastered: 0,
@@ -126,10 +127,11 @@ export default function ActivityPage() {
         </div>
 
         {solved.length > 0 && (
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
+          <div className="grid grid-cols-3 sm:grid-cols-7 gap-2 mb-4">
             <SummaryTile label="Easy" value={summary.Easy} color="text-green-600 dark:text-green-400" />
             <SummaryTile label="Medium" value={summary.Medium} color="text-amber-600 dark:text-amber-400" />
             <SummaryTile label="Hard" value={summary.Hard} color="text-red-600 dark:text-red-400" />
+            <SummaryTile label="Unsolved" value={summary.unsolved} color="text-rose-600 dark:text-rose-400" />
             <SummaryTile label="Learning" value={summary.learning} color="text-blue-600 dark:text-blue-400" />
             <SummaryTile label="Familiar" value={summary.familiar} color="text-amber-600 dark:text-amber-400" />
             <SummaryTile label="Mastered" value={summary.mastered} color="text-green-600 dark:text-green-400" />

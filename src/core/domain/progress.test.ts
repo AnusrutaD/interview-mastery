@@ -159,6 +159,41 @@ describe("filterByPeriod", () => {
   });
 });
 
+describe("unsolved handling", () => {
+  it("counts as attempted but not solved", () => {
+    const progress: ProgressMap = {
+      1: record({ mastery: "unsolved", lastMasteryAt: NOW.toISOString() }),
+    };
+    const stats = summarize(joinProgress(problems, progress));
+    expect(stats.attempted).toBe(1);
+    expect(stats.solved).toBe(0);
+    expect(stats.unsolved).toBe(1);
+  });
+
+  // A failed attempt must never tick the daily goal along.
+  it("does not count towards solvedToday", () => {
+    const progress: ProgressMap = {
+      1: record({ mastery: "unsolved", lastMasteryAt: NOW.toISOString() }),
+      2: record({ mastery: "learning", lastMasteryAt: NOW.toISOString() }),
+    };
+    expect(summarize(joinProgress(problems, progress)).solvedToday).toBe(1);
+  });
+
+  it("becomes due the next day, like learning", () => {
+    const progress: ProgressMap = {
+      1: record({ mastery: "unsolved", lastMasteryAt: "2026-07-27T10:00:00.000Z" }),
+    };
+    expect(joinProgress(problems, progress)[0].due).toBe(true);
+  });
+
+  it("is not due on the same day", () => {
+    const progress: ProgressMap = {
+      1: record({ mastery: "unsolved", lastMasteryAt: NOW.toISOString() }),
+    };
+    expect(joinProgress(problems, progress)[0].due).toBe(false);
+  });
+});
+
 describe("suggestNext", () => {
   it("prefers due reviews over new problems", () => {
     const progress: ProgressMap = {
@@ -172,6 +207,16 @@ describe("suggestNext", () => {
     const progress: ProgressMap = {
       1: record({ mastery: "mastered", lastMasteryAt: old }),
       2: record({ mastery: "learning", lastMasteryAt: old }),
+    };
+    expect(suggestNext(joinProgress(problems, progress))?.id).toBe(2);
+  });
+
+  it("prioritises unsolved above everything else that is due", () => {
+    const old = "2026-06-01T10:00:00.000Z";
+    const progress: ProgressMap = {
+      1: record({ mastery: "learning", lastMasteryAt: old }),
+      2: record({ mastery: "unsolved", lastMasteryAt: old }),
+      3: record({ mastery: "mastered", lastMasteryAt: old }),
     };
     expect(suggestNext(joinProgress(problems, progress))?.id).toBe(2);
   });

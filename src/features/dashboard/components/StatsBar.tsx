@@ -73,7 +73,7 @@ export function StatsBar({ stats }: { stats: ProgressStats }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
         {[...MASTERY_LEVELS].reverse().map((level) => {
           const cfg = MASTERY_CONFIG[level];
           return (

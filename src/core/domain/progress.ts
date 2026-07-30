@@ -5,7 +5,7 @@
  */
 import { DAY_MS, istDayKey, istDayStart, isISTToday } from "../time/ist";
 import type { Difficulty } from "./difficulty";
-import { isAttempted, type MasteryLevel } from "./mastery";
+import { isAttempted, isSolved, type MasteryLevel } from "./mastery";
 import { isDue } from "./review";
 
 /** A NeetCode problem — static reference data. */
@@ -64,8 +64,14 @@ export function joinProgress(problems: readonly Problem[], progress: ProgressMap
 
 export interface ProgressStats {
   total: number;
+  /** Touched at all — includes problems marked unsolved. */
   attempted: number;
+  /** Actually got out — excludes unsolved. */
+  solved: number;
+  /** Currently marked unsolved. The "come back to these" list. */
+  unsolved: number;
   due: number;
+  /** Counts solves only, so a failed attempt cannot complete the daily goal. */
   solvedToday: number;
   byMastery: Record<MasteryLevel, number>;
   byDifficulty: Record<Difficulty, { total: number; attempted: number }>;
@@ -76,6 +82,7 @@ export interface ProgressStats {
 export function summarize(problems: readonly ProblemWithProgress[]): ProgressStats {
   const byMastery: Record<MasteryLevel, number> = {
     unseen: 0,
+    unsolved: 0,
     learning: 0,
     familiar: 0,
     mastered: 0,
@@ -87,6 +94,7 @@ export function summarize(problems: readonly ProblemWithProgress[]): ProgressSta
   };
 
   let attempted = 0;
+  let solved = 0;
   let due = 0;
   let solvedToday = 0;
   let totalTimeSeconds = 0;
@@ -100,15 +108,18 @@ export function summarize(problems: readonly ProblemWithProgress[]): ProgressSta
       attempted += 1;
       byDifficulty[p.difficulty].attempted += 1;
     }
-    if (p.due) due += 1;
-    if (p.lastMasteryAt && isAttempted(p.mastery) && isISTToday(p.lastMasteryAt)) {
-      solvedToday += 1;
+    if (isSolved(p.mastery)) {
+      solved += 1;
+      if (p.lastMasteryAt && isISTToday(p.lastMasteryAt)) solvedToday += 1;
     }
+    if (p.due) due += 1;
   }
 
   return {
     total: problems.length,
     attempted,
+    solved,
+    unsolved: byMastery.unsolved,
     due,
     solvedToday,
     byMastery,
@@ -168,7 +179,14 @@ export function filterByPeriod(
 export function suggestNext(problems: readonly ProblemWithProgress[]): ProblemWithProgress | null {
   const dueNow = problems.filter((p) => p.due);
   if (dueNow.length > 0) {
-    const rank: Record<MasteryLevel, number> = { unseen: 0, learning: 1, familiar: 2, mastered: 3 };
+    // Weakest first — an unsolved problem is the most urgent thing in the queue.
+    const rank: Record<MasteryLevel, number> = {
+      unseen: 0,
+      unsolved: 1,
+      learning: 2,
+      familiar: 3,
+      mastered: 4,
+    };
     return [...dueNow].sort((a, b) => rank[a.mastery] - rank[b.mastery])[0];
   }
   const unseen = problems.filter((p) => p.mastery === "unseen");

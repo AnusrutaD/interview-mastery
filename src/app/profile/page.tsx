@@ -179,7 +179,7 @@ export default function ProfilePage() {
           <Card>
             <CardHeader title="By mastery" className="mb-3" />
             <div className="grid grid-cols-2 gap-2">
-              {(["mastered", "familiar", "learning", "unseen"] as const).map((level) => (
+              {(["mastered", "familiar", "learning", "unsolved", "unseen"] as const).map((level) => (
                 <div
                   key={level}
                   className="border border-gray-100 dark:border-gray-800 rounded-xl p-2.5 text-center"

@@ -1,4 +1,5 @@
 import "server-only";
+import { isSolved } from "@/core/domain/mastery";
 import { calculateStreak, joinProgress, summarize } from "@/core/domain/progress";
 import { PROBLEMS } from "@/data/problems";
 import { prisma } from "../db/prisma";
@@ -28,8 +29,9 @@ export async function getProfile(userId: string) {
   const problems = joinProgress(PROBLEMS, progress);
   const stats = summarize(problems);
 
+  // Streaks count solves, not failed attempts.
   const practiceTimestamps = problems
-    .filter((p) => p.mastery !== "unseen" && p.lastMasteryAt)
+    .filter((p) => isSolved(p.mastery) && p.lastMasteryAt)
     .map((p) => p.lastMasteryAt!);
   const streak = calculateStreak(practiceTimestamps);
 
@@ -75,6 +77,8 @@ export async function getProfile(userId: string) {
     stats: {
       total: stats.total,
       attempted: stats.attempted,
+      solved: stats.solved,
+      unsolved: stats.byMastery.unsolved,
       mastered: stats.byMastery.mastered,
       familiar: stats.byMastery.familiar,
       learning: stats.byMastery.learning,

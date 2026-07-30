@@ -14,6 +14,7 @@ export interface ProblemFilterState {
   difficulty: FilterValue<Difficulty>;
   mastery: FilterValue<MasteryLevel>;
   dueOnly: boolean;
+  unsolvedOnly: boolean;
 }
 
 export const DEFAULT_FILTERS: ProblemFilterState = {
@@ -22,6 +23,7 @@ export const DEFAULT_FILTERS: ProblemFilterState = {
   difficulty: ALL,
   mastery: ALL,
   dueOnly: false,
+  unsolvedOnly: false,
 };
 
 const inputCls =
@@ -94,6 +96,21 @@ export function ProblemFilters({
       >
         🔴 Due
       </button>
+
+      <button
+        type="button"
+        aria-pressed={value.unsolvedOnly}
+        onClick={() => onChange("unsolvedOnly", !value.unsolvedOnly)}
+        title="Problems you attempted but couldn't solve"
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors font-medium",
+          value.unsolvedOnly
+            ? "bg-rose-600 border-rose-600 text-white"
+            : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-rose-300 dark:hover:border-rose-700 hover:text-rose-500"
+        )}
+      >
+        ✗ Unsolved
+      </button>
     </div>
   );
 }
@@ -109,6 +126,7 @@ export function applyFilters(
     if (filters.difficulty !== ALL && p.difficulty !== filters.difficulty) return false;
     if (filters.mastery !== ALL && p.mastery !== filters.mastery) return false;
     if (filters.dueOnly && !p.due) return false;
+    if (filters.unsolvedOnly && p.mastery !== "unsolved") return false;
     if (query) {
       return (
         p.title.toLowerCase().includes(query) || String(p.leetcode).includes(query)

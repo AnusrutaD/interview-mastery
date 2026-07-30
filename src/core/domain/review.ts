@@ -11,8 +11,14 @@
 import { istDaysBetween } from "../time/ist";
 import type { MasteryLevel } from "./mastery";
 
-/** Days to wait before a problem at each level is due again. */
+/**
+ * Days to wait before a problem at each level is due again.
+ *
+ * `unsolved` shares the shortest interval: a problem that beat you should come
+ * back tomorrow, while the attempt is still fresh.
+ */
 export const REVIEW_INTERVAL_DAYS: Record<Exclude<MasteryLevel, "unseen">, number> = {
+  unsolved: 1,
   learning: 1,
   familiar: 3,
   mastered: 7,
