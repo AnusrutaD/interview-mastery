@@ -25,6 +25,29 @@ describe("content quality", () => {
     }
   });
 
+  /**
+   * These four fields are what make a brief self-contained. If any is missing,
+   * revising the problem sends you back to LeetCode — which is the whole thing
+   * this data exists to avoid.
+   */
+  it("every brief is self-contained: signature, worked example and constraints", () => {
+    for (const [id, brief] of entries) {
+      expect(brief.signature, `problem ${id} signature`).toMatch(/\(|:/);
+      expect(brief.example.input.length, `problem ${id} example input`).toBeGreaterThan(3);
+      expect(brief.example.output.length, `problem ${id} example output`).toBeGreaterThan(0);
+      expect(brief.example.why.length, `problem ${id} example rationale`).toBeGreaterThan(15);
+      expect(brief.constraints.length, `problem ${id} constraints`).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("constraints are phrased as statements, not empty filler", () => {
+    for (const [id, brief] of entries) {
+      for (const constraint of brief.constraints) {
+        expect(constraint.trim().length, `problem ${id} constraint`).toBeGreaterThan(5);
+      }
+    }
+  });
+
   it("states a complexity bound in a recognisable form", () => {
     for (const [id, brief] of entries) {
       expect(brief.complexity, `problem ${id}`).toMatch(/O\(|fixed size|Exponential/i);

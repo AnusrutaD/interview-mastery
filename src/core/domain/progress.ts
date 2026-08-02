@@ -31,6 +31,17 @@ export interface Problem {
 export interface ProblemBrief {
   /** What you are being asked to compute, in plain terms. */
   task: string;
+  /** Function shape, language-agnostic: `twoSum(nums: int[], target: int) -> int[]`. */
+  signature: string;
+  /** A worked example written for this app, not copied from anywhere. */
+  example: {
+    input: string;
+    output: string;
+    /** Why that output is correct — the part that makes the task unambiguous. */
+    why: string;
+  };
+  /** Input bounds and the edge cases a correct solution must handle. */
+  constraints: string[];
   /** The observation the intended solution turns on. */
   insight: string;
   /** Target complexity, e.g. "O(n) time, O(n) space". */
