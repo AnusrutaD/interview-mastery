@@ -120,3 +120,80 @@ Merging them would leave half the columns permanently null.
 
 The shared *domain* logic — mastery levels, review scheduling, the solve timer —
 is reused unchanged. Only persistence differs.
+
+## Collections (step 1 of the BYO-content pivot)
+
+The app is becoming a **tracking layer over content the user brings** rather than
+a content site. A `Collection` is a user-owned list — a problem set, a video
+playlist, a reading list — and the app stores only *references* (title, url,
+external id) plus the user's own progress.
+
+That is both the right architecture and the reason there is no licensing
+question about imported lists: the content always stays at its source.
+
+### Model
+
+```
+Collection    userId, name, source, sourceUrl, templateKey,
+              dailyTarget, weeklyTarget, position, icon, archived
+Item          collectionId, title, url, kind, externalId, dedupeKey,
+              difficulty, topic, tags, position, metadata(Json)
+ItemProgress  userId, itemId, mastery, notes, companies,
+              repeatCount, totalTimeSeconds, lastPracticedAt
+```
+
+### Decisions worth not re-litigating
+
+**Collections are materialised per user, not shared.** Built-in lists are seeded
+as real rows tagged with `templateKey`. The cost is duplicated rows; the benefit
+is one code path everywhere and the ability to rename, reorder and delete from
+"your" copy of a built-in list.
+
+**`dedupeKey` is `externalId ?? normalisedUrl ?? null`.** Postgres allows
+repeated NULLs in a unique index, so hand-entered items with neither never
+collide, while re-importing the same list is idempotent.
+
+**Videos are not modelled as problems.** Same `ItemProgress` table, different
+`kind`, different UI affordances. A video has a duration and a watch position;
+a problem has a solve time. Forcing one shape makes both worse.
+
+**`lastPracticedAt` renames `lastMasteryAt`.** Same semantics — set only on
+deliberate practice, never by a notes or time-only write — with a name that
+matches what the domain layer already calls it.
+
+**A null `dailyTarget` means "no pacing on this list", not zero.** It must never
+render as "target met"; see `dailyTargetProgress`.
+
+### What did not change
+
+`core/domain` — mastery levels, spaced repetition, the solve timer, streaks,
+activity periods — operates on levels and timestamps, not on problems. All of it
+applies to any item kind unmodified. That is why this pivot is cheap.
+
+### Migration: expand → migrate → verify → contract
+
+`scripts/migrate-to-collections.ts` backfills existing `Progress` rows into a
+per-user "NeetCode 150" collection.
+
+1. **This release** adds the new tables and the backfill. `Progress` is left
+   completely untouched and remains the source of truth.
+2. A later release points the app at collections.
+3. Only once verified does a further release drop `Progress`.
+
+The script is idempotent — every write is keyed on a natural identity and
+skipped if present, so a partial run can simply be repeated. It ends with a
+verification pass that counts destination rows independently of its own
+counters, and exits non-zero on a mismatch.
+
+Orphaned rows (from the old extension bug that posted LeetCode numbers as
+internal ids) are reported rather than migrated or silently dropped.
+
+The risky part — deciding what each legacy row becomes — lives in
+`core/domain/migration.ts` as pure functions, so it is unit-tested rather than
+only exercised against a live database.
+
+```bash
+npx tsx scripts/migrate-to-collections.ts --dry-run   # inspect, writes nothing
+npx tsx scripts/migrate-to-collections.ts             # apply + verify
+npx tsx scripts/migrate-to-collections.ts --user <id> # one account
+```

@@ -47,6 +47,8 @@ model User {
   sessions      Session[]
   progress      Progress[]
   studyProgress StudyProgress[]
+  collections   Collection[]
+  itemProgress  ItemProgress[]
 }
 
 model VerificationToken {
@@ -55,6 +57,133 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+/// ─────────────────────────────────────────────────────────────────────────────
+/// Collections: the generalised study model.
+///
+/// A Collection is a user-owned list of things to work through — a problem set,
+/// a video playlist, a reading list. The app stores *references* (title, url,
+/// external id) and the user's own progress against them. It never stores the
+/// referenced content itself, which is both the right architecture and the
+/// reason there is no licensing question about what users bring.
+///
+/// Collections are materialised per user rather than shared. Built-in lists are
+/// seeded as real rows via `templateKey`, so a user can rename, reorder and
+/// delete from "their" copy. The cost is duplicated rows; the benefit is one
+/// code path and no special-casing of built-ins anywhere in the app.
+/// ─────────────────────────────────────────────────────────────────────────────
+model Collection {
+  id     String @id @default(cuid())
+  userId String
+
+  name        String
+  description String? @db.Text
+
+  /// Where the list came from: "builtin" | "manual" | "csv" | "leetcode" |
+  /// "youtube" | "gfg". Drives the import UI and the icon, nothing else.
+  source String @default("manual")
+  /// Original list/playlist URL, when there was one. Purely for the user's
+  /// reference and for re-syncing later.
+  sourceUrl String?
+  /// Set when seeded from a built-in list, so a future release can offer
+  /// "reset to latest" without guessing which collections are ours.
+  templateKey String?
+
+  /// Per-collection pacing. Null means "no target for this list" — a user may
+  /// want a daily goal on DSA but none on a video playlist.
+  dailyTarget  Int?
+  weeklyTarget Int?
+
+  /// Display order on the dashboard. Lower first.
+  position Int     @default(0)
+  icon     String?
+  archived Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items Item[]
+
+  @@index([userId, archived, position])
+  @@index([userId, templateKey])
+}
+
+/// A single referenced thing inside a collection.
+///
+/// Reference data only. Progress lives in `ItemProgress` so that a collection
+/// can, in future, be shared or duplicated without dragging one user's history
+/// along with it.
+model Item {
+  id           String @id @default(cuid())
+  collectionId String
+
+  title String
+  url   String?
+  /// "problem" | "video" | "article" | "other". Different kinds get different
+  /// affordances in the UI — a video has a duration and a watch position, a
+  /// problem has a solve time. Deliberately not forced into one shape.
+  kind String @default("problem")
+
+  /// Stable id from the source: a LeetCode slug, a YouTube video id. Null for
+  /// hand-entered items.
+  externalId String?
+  /// Identity used for import de-duplication — `externalId` when present,
+  /// otherwise a normalised URL. Postgres allows repeated NULLs in a unique
+  /// index, so hand-entered items without either never collide.
+  dedupeKey String?
+
+  /// Optional facets. Present for coding problems, absent for most videos.
+  difficulty String?
+  topic      String?
+  tags       String[] @default([])
+
+  /// Ordering within the collection — playlist position, or curriculum order.
+  position Int @default(0)
+
+  /// Kind-specific extras (video duration, LeetCode number, …). Kept as JSON so
+  /// adding a new source needs no migration.
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  collection Collection     @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  progress   ItemProgress[]
+
+  @@unique([collectionId, dedupeKey])
+  @@index([collectionId, position])
+}
+
+/// A user's progress against one item.
+///
+/// Mirrors `Progress` field-for-field in meaning, so the existing domain layer
+/// (mastery levels, spaced repetition, the solve timer) applies unchanged.
+///
+/// `lastPracticedAt` is the rename of `lastMasteryAt` — same semantics, clearer
+/// name: set only on deliberate practice, never by a notes or time-only write.
+/// Review scheduling reads this and never `updatedAt`.
+model ItemProgress {
+  id     String @id @default(cuid())
+  userId String
+  itemId String
+
+  mastery String  @default("unseen")
+  notes   String? @db.Text
+  /// Companies the user personally encountered this in. Their own observation.
+  companies String[] @default([])
+
+  repeatCount      Int       @default(0)
+  totalTimeSeconds Int       @default(0)
+  lastPracticedAt  DateTime?
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+  @@index([userId, lastPracticedAt])
 }
 
 model Progress {
