@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { parseItemList } from "@/core/domain/itemImport";
 import { ITEM_KIND_CONFIG } from "@/core/domain/collection";
 import { Card, CardHeader } from "@/components/ui/Card";
-import type { ImportResponse } from "../api/collection.client";
+import type { ImportResponse, PlaylistImportResponse } from "../api/collection.client";
 import { cn } from "@/lib/cn";
 
 const PLACEHOLDER = `Paste one per line — any of these work:
@@ -24,11 +24,15 @@ Design a rate limiter`;
  */
 export function ImportPanel({
   onImport,
+  onImportPlaylist,
   saving,
 }: {
   onImport: (text: string) => Promise<ImportResponse>;
+  onImportPlaylist?: (url: string) => Promise<PlaylistImportResponse>;
   saving?: boolean;
 }) {
+  const [mode, setMode] = useState<"paste" | "playlist">("paste");
+  const [playlistUrl, setPlaylistUrl] = useState("");
   const [text, setText] = useState("");
   const [result, setResult] = useState<ImportResponse | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,7 +56,35 @@ export function ImportPanel({
 
   return (
     <Card className="mb-4">
-      <CardHeader title="Add items" className="mb-1" />
+      <CardHeader
+        title="Add items"
+        action={
+          onImportPlaylist ? (
+            <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden text-xs font-medium">
+              {(["paste", "playlist"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMode(value)}
+                  className={
+                    mode === value
+                      ? "px-3 py-1.5 bg-blue-600 text-white"
+                      : "px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  }
+                >
+                  {value === "paste" ? "Paste" : "▶ Playlist"}
+                </button>
+              ))}
+            </div>
+          ) : null
+        }
+        className="mb-1"
+      />
+
+      {mode === "playlist" && onImportPlaylist ? (
+        <PlaylistImport onImport={onImportPlaylist} saving={saving} />
+      ) : (
+      <>
       <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
         Paste links or titles. Re-importing the same list is safe — anything already here is
         skipped.
@@ -168,6 +200,83 @@ export function ImportPanel({
             ? `Import ${preview.items.length} item${preview.items.length === 1 ? "" : "s"}`
             : "Paste something to import"}
       </button>
+      </>
+      )}
     </Card>
+  );
+}
+
+/**
+ * YouTube playlist import.
+ *
+ * Fetches video metadata through the official Data API — titles, ids and
+ * durations only. Playback happens later in YouTube's own embedded player.
+ */
+function PlaylistImport({
+  onImport,
+  saving,
+}: {
+  onImport: (url: string) => Promise<PlaylistImportResponse>;
+  saving?: boolean;
+}) {
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<PlaylistImportResponse | null>(null);
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setResult(await onImport(url));
+      setUrl("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
+        Paste a YouTube playlist link. Videos import with their titles and durations, and play
+        inside the app so watch time is tracked.
+      </p>
+
+      <input
+        value={url}
+        onChange={(event) => {
+          setUrl(event.target.value);
+          setResult(null);
+        }}
+        onKeyDown={(event) => event.key === "Enter" && url.trim() && void submit()}
+        placeholder="https://www.youtube.com/playlist?list=..."
+        className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2.5 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-600"
+      />
+
+      {error && (
+        <p role="alert" className="text-xs text-red-600 dark:text-red-400 mt-2">
+          {error}
+        </p>
+      )}
+
+      {result && (
+        <div className="mt-3 px-3 py-2 rounded-xl border bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-800 text-xs text-green-700 dark:text-green-300">
+          <strong>{result.added}</strong> video{result.added === 1 ? "" : "s"} added
+          {result.skipped > 0 && ` · ${result.skipped} already here`}
+          {result.truncated && " · playlist was truncated at 500"}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => void submit()}
+        disabled={busy || saving || !url.trim()}
+        className="mt-3 text-sm font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg transition-colors"
+      >
+        {busy ? "Fetching playlist…" : "Import playlist"}
+      </button>
+    </div>
   );
 }

@@ -14,6 +14,7 @@ import type { MasteryLevel } from "@/core/domain/mastery";
 import {
   fetchCollection,
   importText as importTextRequest,
+  importPlaylist as importPlaylistRequest,
   saveItemProgress,
   deleteItem as deleteItemRequest,
   type ImportResponse,
@@ -34,6 +35,7 @@ export interface UseCollectionResult {
   setNotes: (itemId: string, notes: string) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
   importText: (text: string) => Promise<ImportResponse>;
+  importPlaylist: (url: string) => Promise<import("../api/collection.client").PlaylistImportResponse>;
 }
 
 export function useCollection(collectionId: string): UseCollectionResult {
@@ -81,6 +83,9 @@ export function useCollection(collectionId: string): UseCollectionResult {
           repeatCount: (current[itemId]?.repeatCount ?? 0) + 1,
           totalTimeSeconds: current[itemId]?.totalTimeSeconds ?? 0,
           lastPracticedAt: new Date().toISOString(),
+          // Watch state is owned by the player, never by a mastery click.
+          watchedSeconds: current[itemId]?.watchedSeconds ?? 0,
+          positionSeconds: current[itemId]?.positionSeconds ?? 0,
         },
       }));
 
@@ -141,6 +146,15 @@ export function useCollection(collectionId: string): UseCollectionResult {
     [collectionId, refresh]
   );
 
+  const importPlaylist = useCallback(
+    async (url: string) => {
+      const result = await importPlaylistRequest(collectionId, url);
+      refresh();
+      return result;
+    },
+    [collectionId, refresh]
+  );
+
   const items = useMemo(() => joinItems(rawItems, progress), [rawItems, progress]);
   const stats = useMemo(() => summarizeCollection(items), [items]);
   const targetProgress = useMemo(
@@ -164,5 +178,6 @@ export function useCollection(collectionId: string): UseCollectionResult {
     setNotes,
     removeItem,
     importText,
+    importPlaylist,
   };
 }

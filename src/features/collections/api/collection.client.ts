@@ -95,3 +95,32 @@ export async function saveItemProgress(
   );
   return progress;
 }
+
+export interface PlaylistImportResponse extends ImportResponse {
+  playlistId: string;
+  truncated: boolean;
+}
+
+/** Import a YouTube playlist's video metadata into a collection. */
+export function importPlaylist(
+  collectionId: string,
+  url: string
+): Promise<PlaylistImportResponse> {
+  return post<PlaylistImportResponse>(`${BASE}/${collectionId}/import-playlist`, { url });
+}
+
+export interface WatchProgressResponse extends ItemRecord {
+  complete: boolean;
+}
+
+/** Throttled ping from the video player. Completion is decided server-side. */
+export async function saveWatchProgress(
+  itemId: string,
+  body: { watchedSeconds: number; positionSeconds: number }
+): Promise<WatchProgressResponse> {
+  const { progress } = await post<{ progress: WatchProgressResponse }>(
+    `/api/items/${itemId}/watch`,
+    body
+  );
+  return progress;
+}

@@ -90,8 +90,19 @@ model Collection {
   /// "reset to latest" without guessing which collections are ours.
   templateKey String?
 
-  /// Per-collection pacing. Null means "no target for this list" — a user may
-  /// want a daily goal on DSA but none on a video playlist.
+  /// Per-collection pacing. A null `targetValue` means "no target for this
+  /// list", which must never render as met — see core/domain/target.ts.
+  ///
+  /// `targetUnit` matters for video: a playlist mixing 5-minute clips with
+  /// 90-minute lectures makes a count target meaningless, so minutes is an
+  /// option.
+  /// period: "daily" | "weekly" | "monthly"   unit: "count" | "minutes"
+  targetPeriod String? @default("daily")
+  targetUnit   String? @default("count")
+  targetValue  Int?
+
+  /// Superseded by the target fields above. Retained so the existing backfill
+  /// and any in-flight data keep working until a later release drops them.
   dailyTarget  Int?
   weeklyTarget Int?
 
@@ -133,6 +144,10 @@ model Item {
   /// otherwise a normalised URL. Postgres allows repeated NULLs in a unique
   /// index, so hand-entered items without either never collide.
   dedupeKey String?
+
+  /// Runtime in seconds. Present for videos, null for everything else —
+  /// a real column rather than JSON because target maths queries it.
+  durationSeconds Int?
 
   /// Optional facets. Present for coding problems, absent for most videos.
   difficulty String?
@@ -176,6 +191,14 @@ model ItemProgress {
   repeatCount      Int       @default(0)
   totalTimeSeconds Int       @default(0)
   lastPracticedAt  DateTime?
+
+  /// Video watch tracking.
+  ///
+  /// `watchedSeconds` accumulates only plausible playback deltas, so seeking to
+  /// the end cannot mark a video complete — see core/domain/watch.ts.
+  /// `positionSeconds` is just the resume point and does follow seeks.
+  watchedSeconds  Int @default(0)
+  positionSeconds Int @default(0)
 
   updatedAt DateTime @updatedAt
 

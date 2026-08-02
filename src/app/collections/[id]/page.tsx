@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ITEM_KIND_CONFIG, type ItemWithProgress } from "@/core/domain/collection";
 import { reviewLabel } from "@/core/domain/review";
-import { formatDuration, formatRelative } from "@/core/time/format";
+import { formatClock, formatDuration, formatRelative } from "@/core/time/format";
+import { describeWatch } from "@/core/domain/watch";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -202,7 +203,11 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
         </div>
 
         {(showImport || stats.total === 0) && (
-          <ImportPanel onImport={session.importText} saving={saving} />
+          <ImportPanel
+            onImport={session.importText}
+            onImportPlaylist={session.importPlaylist}
+            saving={saving}
+          />
         )}
 
         {stats.total === 0 ? null : (
@@ -211,6 +216,7 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
               {items.map((item, index) => (
                 <ItemRow
                   key={item.id}
+                  collectionId={collection.id}
                   item={item}
                   last={index === items.length - 1}
                   onSetMastery={(mastery) => void session.setMastery(item.id, mastery)}
@@ -226,11 +232,13 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
 }
 
 function ItemRow({
+  collectionId,
   item,
   last,
   onSetMastery,
   onRemove,
 }: {
+  collectionId: string;
   item: ItemWithProgress;
   last: boolean;
   onSetMastery: (mastery: ItemWithProgress["mastery"]) => void;
@@ -247,7 +255,14 @@ function ItemRow({
             {ITEM_KIND_CONFIG[item.kind].icon}
           </span>
 
-          {item.url ? (
+          {item.kind === "video" && item.externalId ? (
+            <Link
+              href={`/collections/${collectionId}/watch/${item.id}`}
+              className="text-sm font-medium text-gray-800 dark:text-gray-200 hover:text-red-600 dark:hover:text-red-400 transition-colors truncate"
+            >
+              {item.title}
+            </Link>
+          ) : item.url ? (
             <a
               href={item.url}
               target="_blank"
@@ -265,6 +280,13 @@ function ItemRow({
           {item.difficulty && (
             <span className="text-[10px] text-gray-400 dark:text-gray-600 shrink-0">
               {item.difficulty}
+            </span>
+          )}
+          {item.kind === "video" && item.durationSeconds && (
+            <span className="text-[10px] text-gray-400 dark:text-gray-600 shrink-0 tabular-nums">
+              {formatClock(item.durationSeconds)}
+              {item.watchedSeconds > 0 &&
+                ` · ${describeWatch({ watchedSeconds: item.watchedSeconds, positionSeconds: item.positionSeconds }, item.durationSeconds).percent}%`}
             </span>
           )}
           {item.due && (

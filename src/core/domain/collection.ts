@@ -73,6 +73,9 @@ export interface Collection {
   templateKey: string | null;
   dailyTarget: number | null;
   weeklyTarget: number | null;
+  targetPeriod: string | null;
+  targetUnit: string | null;
+  targetValue: number | null;
   position: number;
   icon: string | null;
   archived: boolean;
@@ -85,6 +88,8 @@ export interface Item {
   url: string | null;
   kind: ItemKind;
   externalId: string | null;
+  /** Runtime in seconds. Present for videos only. */
+  durationSeconds: number | null;
   difficulty: string | null;
   topic: string | null;
   tags: string[];
@@ -101,6 +106,10 @@ export interface ItemRecord {
   totalTimeSeconds: number;
   /** Set only on deliberate practice — drives review scheduling. */
   lastPracticedAt: string | null;
+  /** Accumulated genuine playback. Seek-resistant; see core/domain/watch.ts. */
+  watchedSeconds: number;
+  /** Resume point. Follows seeks. */
+  positionSeconds: number;
 }
 
 export const EMPTY_ITEM_RECORD: ItemRecord = {
@@ -110,6 +119,8 @@ export const EMPTY_ITEM_RECORD: ItemRecord = {
   repeatCount: 0,
   totalTimeSeconds: 0,
   lastPracticedAt: null,
+  watchedSeconds: 0,
+  positionSeconds: 0,
 };
 
 /** Item joined with the user's progress — what the UI renders. */

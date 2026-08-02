@@ -1,5 +1,6 @@
 import "server-only";
-import { toMasteryLevel } from "@/core/domain/mastery";
+import { isSolved, toMasteryLevel } from "@/core/domain/mastery";
+import { describeWatch } from "@/core/domain/watch";
 import {
   dedupeKeyFor,
   toCollectionSource,
@@ -29,6 +30,9 @@ type CollectionRow = {
   templateKey: string | null;
   dailyTarget: number | null;
   weeklyTarget: number | null;
+  targetPeriod: string | null;
+  targetUnit: string | null;
+  targetValue: number | null;
   position: number;
   icon: string | null;
   archived: boolean;
@@ -45,6 +49,7 @@ type ItemRow = {
   url: string | null;
   kind: string;
   externalId: string | null;
+  durationSeconds: number | null;
   difficulty: string | null;
   topic: string | null;
   tags: string[];
@@ -170,6 +175,8 @@ export async function getCollection(
       repeatCount: row.repeatCount ?? 0,
       totalTimeSeconds: row.totalTimeSeconds ?? 0,
       lastPracticedAt: row.lastPracticedAt?.toISOString() ?? null,
+      watchedSeconds: row.watchedSeconds ?? 0,
+      positionSeconds: row.positionSeconds ?? 0,
     };
   }
 
@@ -202,6 +209,9 @@ export async function createCollection(
       sourceUrl: input.sourceUrl ?? null,
       dailyTarget: input.dailyTarget ?? null,
       weeklyTarget: input.weeklyTarget ?? null,
+      targetPeriod: input.targetPeriod ?? "daily",
+      targetUnit: input.targetUnit ?? "count",
+      targetValue: input.targetValue ?? null,
       icon: input.icon ?? null,
       position: (last?.position ?? -1) + 1,
     },
@@ -227,6 +237,9 @@ export async function updateCollection(
       ...(input.sourceUrl !== undefined && { sourceUrl: input.sourceUrl }),
       ...(input.dailyTarget !== undefined && { dailyTarget: input.dailyTarget }),
       ...(input.weeklyTarget !== undefined && { weeklyTarget: input.weeklyTarget }),
+      ...(input.targetPeriod !== undefined && { targetPeriod: input.targetPeriod }),
+      ...(input.targetUnit !== undefined && { targetUnit: input.targetUnit }),
+      ...(input.targetValue !== undefined && { targetValue: input.targetValue }),
       ...(input.icon !== undefined && { icon: input.icon }),
       ...(input.position !== undefined && { position: input.position }),
       ...(input.archived !== undefined && { archived: input.archived }),
@@ -283,6 +296,7 @@ export async function importItems(
     dedupeKey: item.dedupeKey ?? dedupeKeyFor({ externalId: item.externalId, url: item.url }),
     difficulty: item.difficulty ?? null,
     topic: item.topic ?? null,
+    durationSeconds: item.durationSeconds ?? null,
     position: item.position ?? base + index,
   }));
 
@@ -350,5 +364,73 @@ export async function upsertItemProgress(
     repeatCount: row.repeatCount ?? 0,
     totalTimeSeconds: row.totalTimeSeconds ?? 0,
     lastPracticedAt: row.lastPracticedAt?.toISOString() ?? null,
+    watchedSeconds: row.watchedSeconds ?? 0,
+    positionSeconds: row.positionSeconds ?? 0,
+  };
+}
+
+/* ── Watch progress ───────────────────────────────────────────────────────── */
+
+/**
+ * Persist video watch progress.
+ *
+ * Written on a throttle from the player, so it must be cheap and must never
+ * regress: `watchedSeconds` only ever moves forward, because a stale in-flight
+ * request arriving late must not undo newer progress.
+ *
+ * Crossing the completion threshold is decided here rather than trusted from
+ * the client, and promotes mastery to "familiar" — but only upward, so a video
+ * the user already marked "mastered" is not demoted by a re-watch.
+ */
+export async function saveWatchProgress(
+  userId: string,
+  itemId: string,
+  input: { watchedSeconds: number; positionSeconds: number }
+): Promise<ItemRecord & { complete: boolean }> {
+  const item = await requireOwnedItem(userId, itemId);
+
+  const existing = await prisma.itemProgress.findUnique({
+    where: { userId_itemId: { userId, itemId } },
+  });
+
+  const watchedSeconds = Math.max(existing?.watchedSeconds ?? 0, input.watchedSeconds);
+  const duration = item.durationSeconds ?? null;
+  const { complete } = describeWatch({ watchedSeconds, positionSeconds: input.positionSeconds }, duration);
+
+  const alreadyRecorded = existing ? isSolved(toMasteryLevel(existing.mastery)) : false;
+  const promote = complete && !alreadyRecorded;
+
+  const row = await prisma.itemProgress.upsert({
+    where: { userId_itemId: { userId, itemId } },
+    update: {
+      watchedSeconds,
+      positionSeconds: input.positionSeconds,
+      ...(promote && {
+        mastery: "familiar",
+        repeatCount: { increment: 1 },
+        lastPracticedAt: new Date(),
+      }),
+    },
+    create: {
+      userId,
+      itemId,
+      watchedSeconds,
+      positionSeconds: input.positionSeconds,
+      mastery: promote ? "familiar" : "unseen",
+      repeatCount: promote ? 1 : 0,
+      lastPracticedAt: promote ? new Date() : null,
+    },
+  });
+
+  return {
+    mastery: toMasteryLevel(row.mastery),
+    notes: row.notes,
+    companies: row.companies ?? [],
+    repeatCount: row.repeatCount ?? 0,
+    totalTimeSeconds: row.totalTimeSeconds ?? 0,
+    lastPracticedAt: row.lastPracticedAt?.toISOString() ?? null,
+    watchedSeconds: row.watchedSeconds ?? 0,
+    positionSeconds: row.positionSeconds ?? 0,
+    complete,
   };
 }

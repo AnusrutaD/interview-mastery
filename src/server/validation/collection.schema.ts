@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { COLLECTION_SOURCES, ITEM_KINDS } from "@/core/domain/collection";
+import { TARGET_PERIODS, TARGET_UNITS } from "@/core/domain/target";
 import { MASTERY_LEVELS } from "@/core/domain/mastery";
 
 const MAX_SESSION_SECONDS = 6 * 60 * 60;
@@ -13,6 +14,9 @@ export const createCollectionSchema = z.object({
   sourceUrl: z.string().trim().url().max(2000).nullable().optional(),
   dailyTarget: z.number().int().min(1).max(100).nullable().optional(),
   weeklyTarget: z.number().int().min(1).max(500).nullable().optional(),
+  targetPeriod: z.enum(TARGET_PERIODS).nullable().optional(),
+  targetUnit: z.enum(TARGET_UNITS).nullable().optional(),
+  targetValue: z.number().int().min(1).max(10_000).nullable().optional(),
   icon: z.string().trim().max(8).nullable().optional(),
 });
 
@@ -25,6 +29,9 @@ export const updateCollectionSchema = z
     // field, which leaves the existing target alone.
     dailyTarget: z.number().int().min(1).max(100).nullable().optional(),
     weeklyTarget: z.number().int().min(1).max(500).nullable().optional(),
+    targetPeriod: z.enum(TARGET_PERIODS).nullable().optional(),
+    targetUnit: z.enum(TARGET_UNITS).nullable().optional(),
+    targetValue: z.number().int().min(1).max(10_000).nullable().optional(),
     icon: z.string().trim().max(8).nullable().optional(),
     position: z.number().int().min(0).max(1000).optional(),
     archived: z.boolean().optional(),
@@ -39,6 +46,8 @@ export const importItemSchema = z.object({
   dedupeKey: z.string().trim().max(2000).nullable().optional(),
   difficulty: z.string().trim().max(40).nullable().optional(),
   topic: z.string().trim().max(120).nullable().optional(),
+  /** Runtime in seconds. Capped at 12h — longer is bad metadata, not a lecture. */
+  durationSeconds: z.number().int().positive().max(43_200).nullable().optional(),
   position: z.number().int().min(0).optional(),
 });
 
@@ -66,6 +75,17 @@ export const upsertItemProgressSchema = z
       body.timeSeconds !== undefined,
     { message: "Nothing to update" }
   );
+
+export const watchProgressSchema = z.object({
+  watchedSeconds: z.number().int().nonnegative().max(43_200),
+  positionSeconds: z.number().int().nonnegative().max(43_200),
+});
+
+export type WatchProgressInput = z.infer<typeof watchProgressSchema>;
+
+export const importPlaylistSchema = z.object({
+  url: z.string().trim().min(5).max(2000),
+});
 
 export type CreateCollectionInput = z.infer<typeof createCollectionSchema>;
 export type UpdateCollectionInput = z.infer<typeof updateCollectionSchema>;
