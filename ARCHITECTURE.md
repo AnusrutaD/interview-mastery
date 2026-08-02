@@ -79,3 +79,44 @@ that actually broke in production is covered without a DOM or a database.
 3. Expose a route in `app/api` using `withAuth` — it should be ~5 lines.
 4. Add a client method in the feature's `api/` module.
 5. Build the hook, then the component. Keep the page thin.
+
+## System Design track
+
+A second study track lives alongside DSA, sharing the domain layer but not the
+persistence layer.
+
+### Content
+
+Markdown with YAML frontmatter under `content/system-design/{concepts,exercises}/`.
+Add a file, it appears in the roadmap — there is no registry to update.
+
+Frontmatter carries `title`, `pattern`, `level`, `order`, `minutes`, `summary`,
+plus `quiz` (concepts) or `rubric` (exercises). A `## Reference Solution`
+heading splits the body; everything after it is withheld behind a disclosure and
+a warning until the exercise has been attempted.
+
+`src/server/content/frontmatter.ts` is a deliberately minimal YAML subset
+parser. If the format ever needs anchors or multi-line folding, that is the
+signal to adopt `gray-matter` rather than extend it.
+
+### Why rubrics
+
+Nobody grades their own open-ended design honestly. "I think that went okay" is
+not a signal. A weighted checklist of what a strong answer covers turns a vague
+feeling into a score, and the unchecked boxes are literally the study list for
+the next attempt. `suggestMastery` maps the band to a mastery level, with
+"needs work" mapping to `unsolved` — attempted, did not hold up.
+
+Weights exist because omissions are not equal: not estimating QPS is a bigger
+miss than not naming a specific database product.
+
+### Why a separate table
+
+`StudyProgress` is not a polymorphic extension of `Progress`. They are different
+aggregates: `Progress` is keyed on the numeric NeetCode catalogue and written by
+an external client (the Chrome extension via API key); study items are
+slug-keyed and carry quiz and rubric state meaningless for a coding problem.
+Merging them would leave half the columns permanently null.
+
+The shared *domain* logic — mastery levels, review scheduling, the solve timer —
+is reused unchanged. Only persistence differs.

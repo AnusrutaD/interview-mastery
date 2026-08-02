@@ -46,6 +46,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   progress      Progress[]
+  studyProgress StudyProgress[]
 }
 
 model VerificationToken {
@@ -69,4 +70,48 @@ model Progress {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, problemId])
+}
+
+/// Progress against system-design study material.
+///
+/// Deliberately a separate table from `Progress` rather than a polymorphic
+/// extension of it. The two are different aggregates:
+///   - `Progress` is keyed on the numeric NeetCode catalogue and is written by
+///     an external client (the Chrome extension, via API key).
+///   - Study items are slug-keyed markdown, self-assessed, and carry quiz and
+///     rubric state that is meaningless for a coding problem.
+/// Merging them would leave half the columns permanently null on every row.
+/// The shared *domain* logic (mastery, review scheduling, timing) is reused;
+/// only persistence differs.
+model StudyProgress {
+  id       String @id @default(cuid())
+  userId   String
+  /// "concept" | "exercise"
+  itemType String
+  /// Stable slug from the markdown filename.
+  itemSlug String
+
+  mastery String  @default("unseen")
+  notes   String? @db.Text
+
+  /// Best MCQ score achieved, and how many times the quiz was taken.
+  quizBestScore Int?
+  quizTotal     Int?
+  quizAttempts  Int  @default(0)
+
+  /// Self-assessment against the exercise rubric. Ids of satisfied criteria.
+  rubricChecked String[] @default([])
+  rubricScore   Int?
+  rubricMax     Int?
+
+  repeatCount      Int       @default(0)
+  totalTimeSeconds Int       @default(0)
+  /// Set only on deliberate practice — drives review scheduling. See Progress.
+  lastMasteryAt    DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemType, itemSlug])
+  @@index([userId, itemType])
 }
