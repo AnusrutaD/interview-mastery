@@ -1,16 +1,23 @@
 "use client";
-import { use, useState } from "react";
+import { use, useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ITEM_KIND_CONFIG, type ItemWithProgress } from "@/core/domain/collection";
-import { reviewLabel } from "@/core/domain/review";
-import { formatClock, formatDuration, formatRelative } from "@/core/time/format";
-import { describeWatch } from "@/core/domain/watch";
+import type { ItemWithProgress } from "@/core/domain/collection";
+import {
+  applyItemFilters,
+  DEFAULT_ITEM_FILTERS,
+  deriveFacets,
+  isFiltering,
+  reconcileFilters,
+  type ItemFilterState,
+} from "@/core/domain/itemFilter";
+import { formatDuration } from "@/core/time/format";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Spinner } from "@/components/ui/Spinner";
-import { MasterySelector } from "@/features/problems/components/MasterySelector";
+import { ItemFilters } from "@/features/items/components/ItemFilters";
+import { ItemTable } from "@/features/items/components/ItemTable";
 import { useCollection } from "@/features/collections/hooks/useCollection";
 import { ImportPanel } from "@/features/collections/components/ImportPanel";
 import { deleteCollection, updateCollection } from "@/features/collections/api/collection.client";
@@ -24,6 +31,25 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
 
   const [showImport, setShowImport] = useState(false);
   const [editingTarget, setEditingTarget] = useState(false);
+  const [filters, setFilters] = useState<ItemFilterState>(DEFAULT_ITEM_FILTERS);
+
+  // Facets come from the items themselves, so a playlist and a problem set get
+  // different controls without either page knowing what it is looking at.
+  const facets = useMemo(() => deriveFacets(items), [items]);
+  // Drop any filter the current items can no longer satisfy — otherwise
+  // removing the last Hard item leaves the list stuck on an empty filter.
+  const activeFilters = useMemo(() => reconcileFilters(filters, facets), [filters, facets]);
+  const visibleItems = useMemo(
+    () => applyItemFilters(items, activeFilters),
+    [items, activeFilters]
+  );
+
+  const setFilter = useCallback(
+    <K extends keyof ItemFilterState>(key: K, next: ItemFilterState[K]) =>
+      setFilters((current) => ({ ...current, [key]: next })),
+    []
+  );
+  const resetFilters = useCallback(() => setFilters(DEFAULT_ITEM_FILTERS), []);
 
   if (loading) {
     return (
@@ -210,119 +236,33 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
           />
         )}
 
-        {stats.total === 0 ? null : (
-          <Card padded={false} className="overflow-hidden">
-            <ul>
-              {items.map((item, index) => (
-                <ItemRow
-                  key={item.id}
-                  collectionId={collection.id}
-                  item={item}
-                  last={index === items.length - 1}
-                  onSetMastery={(mastery) => void session.setMastery(item.id, mastery)}
-                  onRemove={() => void session.removeItem(item.id)}
-                />
-              ))}
-            </ul>
-          </Card>
+        {stats.total > 0 && (
+          <>
+            <ItemFilters
+              value={activeFilters}
+              facets={facets}
+              onChange={setFilter}
+              onReset={resetFilters}
+              resultCount={visibleItems.length}
+              totalCount={items.length}
+            />
+
+            <ItemTable
+              items={visibleItems}
+              hrefFor={(item) =>
+                item.kind === "video" && item.externalId
+                  ? `/collections/${collection.id}/watch/${item.id}`
+                  : item.url
+              }
+              onSetMastery={(itemId, mastery) => void session.setMastery(itemId, mastery)}
+              onRemove={(itemId) => void session.removeItem(itemId)}
+              filtered={isFiltering(activeFilters)}
+              onClearFilters={resetFilters}
+            />
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function ItemRow({
-  collectionId,
-  item,
-  last,
-  onSetMastery,
-  onRemove,
-}: {
-  collectionId: string;
-  item: ItemWithProgress;
-  last: boolean;
-  onSetMastery: (mastery: ItemWithProgress["mastery"]) => void;
-  onRemove: () => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const status = reviewLabel(item.mastery, item.lastPracticedAt);
-
-  return (
-    <li className={cn(!last && "border-b border-gray-100 dark:border-gray-800")}>
-      <div className="px-4 py-3">
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <span className="text-sm shrink-0" aria-hidden title={ITEM_KIND_CONFIG[item.kind].label}>
-            {ITEM_KIND_CONFIG[item.kind].icon}
-          </span>
-
-          {item.kind === "video" && item.externalId ? (
-            <Link
-              href={`/collections/${collectionId}/watch/${item.id}`}
-              className="text-sm font-medium text-gray-800 dark:text-gray-200 hover:text-red-600 dark:hover:text-red-400 transition-colors truncate"
-            >
-              {item.title}
-            </Link>
-          ) : item.url ? (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm font-medium text-gray-800 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate"
-            >
-              {item.title}
-            </a>
-          ) : (
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-              {item.title}
-            </span>
-          )}
-
-          {item.difficulty && (
-            <span className="text-[10px] text-gray-400 dark:text-gray-600 shrink-0">
-              {item.difficulty}
-            </span>
-          )}
-          {item.kind === "video" && item.durationSeconds && (
-            <span className="text-[10px] text-gray-400 dark:text-gray-600 shrink-0 tabular-nums">
-              {formatClock(item.durationSeconds)}
-              {item.watchedSeconds > 0 &&
-                ` · ${describeWatch({ watchedSeconds: item.watchedSeconds, positionSeconds: item.positionSeconds }, item.durationSeconds).percent}%`}
-            </span>
-          )}
-          {item.due && (
-            <span className="text-[10px] font-semibold text-red-500 shrink-0" title={status ?? "Due"}>
-              🔴 due
-            </span>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="ml-auto text-xs text-gray-300 dark:text-gray-700 hover:text-gray-500 transition-colors shrink-0"
-            aria-expanded={expanded}
-          >
-            {expanded ? "▲" : "▼"}
-          </button>
-        </div>
-
-        <MasterySelector value={item.mastery} onChange={onSetMastery} />
-
-        {expanded && (
-          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-4 flex-wrap text-[11px] text-gray-400 dark:text-gray-500">
-            {item.lastPracticedAt && <span>Last practised {formatRelative(item.lastPracticedAt)}</span>}
-            {item.repeatCount > 0 && <span>{item.repeatCount}× reviewed</span>}
-            {item.totalTimeSeconds > 0 && <span>{formatDuration(item.totalTimeSeconds)} spent</span>}
-            {item.topic && <span>{item.topic}</span>}
-            <button
-              type="button"
-              onClick={onRemove}
-              className="ml-auto text-gray-300 dark:text-gray-700 hover:text-red-500 transition-colors"
-            >
-              Remove
-            </button>
-          </div>
-        )}
-      </div>
-    </li>
-  );
-}
