@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { parseItemList } from "@/core/domain/itemImport";
+import { findPlaylistUrl, parseItemList } from "@/core/domain/itemImport";
 import { ITEM_KIND_CONFIG } from "@/core/domain/collection";
 import { Card, CardHeader } from "@/components/ui/Card";
 import type { ImportResponse, PlaylistImportResponse } from "../api/collection.client";
@@ -32,16 +32,20 @@ export function ImportPanel({
   saving?: boolean;
 }) {
   const [mode, setMode] = useState<"paste" | "playlist">("paste");
-  const [playlistUrl, setPlaylistUrl] = useState("");
+  const [playlistSeed, setPlaylistSeed] = useState("");
   const [text, setText] = useState("");
   const [result, setResult] = useState<ImportResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const preview = useMemo(() => (text.trim() ? parseItemList(text) : null), [text]);
+  // A pasted playlist link is the single most likely mistake here, so it gets
+  // a one-click fix rather than an error buried in the issues list.
+  const pastedPlaylist = useMemo(() => (text.trim() ? findPlaylistUrl(text) : null), [text]);
 
   const submit = async () => {
-    if (!preview || preview.items.length === 0) return;
+    const hasParsedItems = Boolean(preview && preview.items.length > 0);
+    if (!hasParsedItems && !pastedPlaylist) return;
     setBusy(true);
     setError(null);
     try {
@@ -82,7 +86,7 @@ export function ImportPanel({
       />
 
       {mode === "playlist" && onImportPlaylist ? (
-        <PlaylistImport onImport={onImportPlaylist} saving={saving} />
+        <PlaylistImport onImport={onImportPlaylist} saving={saving} initialUrl={playlistSeed} />
       ) : (
       <>
       <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
@@ -100,6 +104,26 @@ export function ImportPanel({
         rows={7}
         className="w-full text-sm font-mono border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 resize-y focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-600 bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-200 placeholder-gray-300 dark:placeholder-gray-700"
       />
+
+      {pastedPlaylist && onImportPlaylist && (
+        <div className="mt-3 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 flex items-center gap-3 flex-wrap">
+          <span aria-hidden>▶️</span>
+          <p className="text-xs text-red-700 dark:text-red-300 flex-1 min-w-40">
+            <strong>Playlist detected.</strong> Importing will expand it into one item per video,
+            with durations and watch tracking. Requires a YouTube API key on the server.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setPlaylistSeed(pastedPlaylist);
+              setMode("playlist");
+            }}
+            className="text-xs font-semibold bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-colors shrink-0"
+          >
+            Import as playlist →
+          </button>
+        </div>
+      )}
 
       {preview && preview.items.length > 0 && (
         <div className="mt-3 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
@@ -191,12 +215,16 @@ export function ImportPanel({
       <button
         type="button"
         onClick={() => void submit()}
-        disabled={busy || saving || !preview || preview.items.length === 0}
+        disabled={busy || saving || (!pastedPlaylist && (!preview || preview.items.length === 0))}
         className="mt-3 text-sm font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg transition-colors"
       >
         {busy
-          ? "Importing…"
-          : preview && preview.items.length > 0
+          ? pastedPlaylist
+            ? "Fetching playlist…"
+            : "Importing…"
+          : pastedPlaylist && (!preview || preview.items.length === 0)
+            ? "Import playlist"
+            : preview && preview.items.length > 0
             ? `Import ${preview.items.length} item${preview.items.length === 1 ? "" : "s"}`
             : "Paste something to import"}
       </button>
@@ -215,11 +243,14 @@ export function ImportPanel({
 function PlaylistImport({
   onImport,
   saving,
+  initialUrl = "",
 }: {
   onImport: (url: string) => Promise<PlaylistImportResponse>;
   saving?: boolean;
+  /** Carried over when the user pasted a playlist link into the other tab. */
+  initialUrl?: string;
 }) {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(initialUrl);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PlaylistImportResponse | null>(null);

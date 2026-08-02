@@ -24,6 +24,8 @@ export interface ParsedItem {
   dedupeKey: string | null;
   difficulty: string | null;
   topic: string | null;
+  /** Runtime in seconds. Only ever set for videos expanded from a playlist. */
+  durationSeconds?: number | null;
   position: number;
 }
 
@@ -52,6 +54,39 @@ function splitFields(line: string): string[] {
 }
 
 const URL_RE = /https?:\/\/\S+/i;
+
+/**
+ * A YouTube *playlist* link, as opposed to a single video.
+ *
+ * These need the playlist importer, which expands them into one item per
+ * video. Left to the ordinary parser they become a single item with no video
+ * id, which then renders as a plain link out to YouTube — technically valid,
+ * completely useless, and exactly the wrong thing to do silently.
+ */
+export function isPlaylistUrl(raw: string): boolean {
+  const match = raw.match(URL_RE);
+  if (!match) return false;
+
+  try {
+    const parsed = new URL(match[0]);
+    const host = parsed.host.toLowerCase().replace(/^www\./, "");
+    if (!host.endsWith("youtube.com")) return false;
+    // A watch URL carrying `list` is a video *within* a playlist — importing
+    // just that video is a reasonable reading of the paste, so allow it.
+    if (parsed.pathname.startsWith("/watch") && parsed.searchParams.get("v")) return false;
+    return Boolean(parsed.searchParams.get("list"));
+  } catch {
+    return false;
+  }
+}
+
+/** The first playlist URL in a paste, so the UI can offer to switch importers. */
+export function findPlaylistUrl(raw: string): string | null {
+  for (const line of raw.split(/\r?\n/)) {
+    if (isPlaylistUrl(line)) return line.trim().match(URL_RE)?.[0] ?? null;
+  }
+  return null;
+}
 
 /** Recognise the source from the host and pull a stable external id. */
 function identify(url: string): { kind: ItemKind; externalId: string | null } {
@@ -116,6 +151,18 @@ export function parseItemList(raw: string, startPosition = 0): ImportResult {
 
     const fields = splitFields(line).map((f) => f.trim()).filter(Boolean);
     if (fields.length === 0) return;
+
+    // Refuse playlist links rather than importing a dud single item. The issue
+    // is actionable — the UI turns it into a one-click switch to the playlist
+    // importer.
+    if (isPlaylistUrl(line)) {
+      issues.push({
+        line: index + 1,
+        text: line,
+        reason: "That is a playlist link — use the Playlist tab to import every video in it",
+      });
+      return;
+    }
 
     const urlField = fields.find((f) => URL_RE.test(f));
     const url = urlField ? (urlField.match(URL_RE)?.[0] ?? null) : null;

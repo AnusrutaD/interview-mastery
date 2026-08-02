@@ -1,5 +1,54 @@
 import { describe, expect, it } from "vitest";
-import { parseItemList } from "./itemImport";
+import { findPlaylistUrl, isPlaylistUrl, parseItemList } from "./itemImport";
+
+/**
+ * Regression: a pasted playlist link used to import as ONE item with no video
+ * id, which rendered as a plain link straight back out to YouTube. The user
+ * reasonably read that as "it didn't fetch the videos".
+ */
+describe("playlist links", () => {
+  const PLAYLIST = "https://www.youtube.com/playlist?list=PLjTveVh7FakK3c6rb-1-_KO4k8r3--8CU";
+
+  it("recognises a playlist url", () => {
+    expect(isPlaylistUrl(PLAYLIST)).toBe(true);
+  });
+
+  it("recognises one without www", () => {
+    expect(isPlaylistUrl("https://youtube.com/playlist?list=PLabc123456")).toBe(true);
+  });
+
+  /** A watch URL carrying `list` is a video within a playlist — importable as-is. */
+  it("does not treat a watch link inside a playlist as a playlist", () => {
+    expect(isPlaylistUrl("https://www.youtube.com/watch?v=abc123&list=PLxyz")).toBe(false);
+  });
+
+  it("ignores non-YouTube urls and plain text", () => {
+    expect(isPlaylistUrl("https://leetcode.com/problem-list/abc/")).toBe(false);
+    expect(isPlaylistUrl("Design a rate limiter")).toBe(false);
+  });
+
+  it("refuses to import a playlist link as a single item", () => {
+    const result = parseItemList(PLAYLIST);
+    expect(result.items).toHaveLength(0);
+    expect(result.issues[0].reason).toMatch(/playlist/i);
+  });
+
+  it("still imports the other lines around it", () => {
+    const result = parseItemList(
+      [PLAYLIST, "https://youtu.be/abc12345", "Design a chat system"].join("\n")
+    );
+    expect(result.items).toHaveLength(2);
+    expect(result.issues).toHaveLength(1);
+  });
+
+  it("finds the playlist url so the UI can offer to switch importers", () => {
+    expect(findPlaylistUrl(`Some notes\n${PLAYLIST}\nmore`)).toBe(PLAYLIST);
+  });
+
+  it("returns null when there is no playlist link", () => {
+    expect(findPlaylistUrl("https://youtu.be/abc12345\nTwo Sum")).toBeNull();
+  });
+});
 
 describe("line formats", () => {
   it("accepts a bare URL and derives a readable title", () => {
