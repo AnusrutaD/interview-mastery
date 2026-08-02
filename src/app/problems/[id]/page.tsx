@@ -228,10 +228,10 @@ function ScopedBackLink() {
   const { slug, category } = useScope();
   return (
     <Link
-      href={category ? `/topics/${slug}` : "/"}
+      href={category ? `/topics/${slug}` : "/dsa"}
       className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors"
     >
-      ← Back to {category ?? "Dashboard"}
+      ← Back to {category ?? "DSA"}
     </Link>
   );
 }

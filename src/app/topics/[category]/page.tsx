@@ -33,7 +33,7 @@ export default function TopicPage({ params }: { params: Promise<{ category: stri
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
         <nav className="text-xs text-gray-400 dark:text-gray-500 mb-3 flex items-center gap-1.5">
-          <Link href="/" className="hover:text-blue-500 transition-colors">Dashboard</Link>
+          <Link href="/dsa" className="hover:text-blue-500 transition-colors">DSA</Link>
           <span>/</span>
           <Link href="/topics" className="hover:text-blue-500 transition-colors">Topics</Link>
           <span>/</span>

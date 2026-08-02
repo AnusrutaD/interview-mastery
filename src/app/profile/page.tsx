@@ -96,7 +96,7 @@ export default function ProfilePage() {
           href="/"
           className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors"
         >
-          ← Back to Dashboard
+          ← Back to tracks
         </Link>
 
         <Card className="mt-3 mb-4 flex flex-col sm:flex-row items-center gap-5">

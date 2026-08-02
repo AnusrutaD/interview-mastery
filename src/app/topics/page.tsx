@@ -53,8 +53,8 @@ export default function TopicsPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
         <header className="mb-5">
-          <Link href="/" className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors">
-            ← Back to Dashboard
+          <Link href="/dsa" className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors">
+            ← Back to DSA
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">Study by Topic</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">

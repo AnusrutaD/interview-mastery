@@ -27,7 +27,7 @@ export default function SystemDesignPage() {
             href="/"
             className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors"
           >
-            ← Back to Dashboard
+            ← Back to tracks
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">
             System Design

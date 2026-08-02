@@ -71,10 +71,10 @@ export default function ActivityPage() {
       <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
         <header className="mb-6">
           <Link
-            href="/"
+            href="/dsa"
             className="text-xs text-gray-400 dark:text-gray-500 hover:text-blue-500 transition-colors"
           >
-            ← Back to Dashboard
+            ← Back to DSA
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">Activity</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">

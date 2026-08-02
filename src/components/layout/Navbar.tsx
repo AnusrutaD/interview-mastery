@@ -6,11 +6,25 @@ import type { Session } from "next-auth";
 import { cn } from "@/lib/cn";
 import { ThemeToggle } from "./ThemeToggle";
 
+/**
+ * Top-level tracks plus cross-track pages. `/topics` is intentionally absent —
+ * it is a sub-navigation of DSA and is reached from the DSA dashboard.
+ */
 const NAV_LINKS = [
-  { href: "/topics", label: "Topics" },
-  { href: "/system-design", label: "System Design" },
-  { href: "/activity", label: "Activity" },
+  // `owns` lists the other route prefixes belonging to this track, so a problem
+  // or topic page still highlights DSA rather than leaving the nav blank.
+  { href: "/dsa", label: "DSA", owns: ["/topics", "/problems"] },
+  { href: "/system-design", label: "System Design", owns: [] },
+  { href: "/activity", label: "Activity", owns: [] },
 ] as const;
+
+function isActive(pathname: string | null, link: (typeof NAV_LINKS)[number]): boolean {
+  if (!pathname) return false;
+  return (
+    pathname.startsWith(link.href) ||
+    link.owns.some((prefix) => pathname.startsWith(prefix))
+  );
+}
 
 function initialsOf(user: Session["user"] | undefined): string {
   const source = user?.name || user?.email || "?";
@@ -67,8 +81,9 @@ export function Navbar() {
 
           {!isAuthPage && (
             <nav className="flex items-center gap-1" aria-label="Main">
-              {NAV_LINKS.map(({ href, label }) => {
-                const active = pathname?.startsWith(href) ?? false;
+              {NAV_LINKS.map((link) => {
+                const { href, label } = link;
+                const active = isActive(pathname, link);
                 return (
                   <Link
                     key={href}

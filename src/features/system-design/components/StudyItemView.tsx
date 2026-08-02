@@ -51,7 +51,7 @@ export function StudyItemView({ item, neighbours }: Props) {
       <div className="max-w-3xl mx-auto px-4 py-6">
         <nav className="text-xs text-gray-400 dark:text-gray-500 mb-3 flex items-center gap-1.5">
           <Link href="/" className="hover:text-blue-500 transition-colors">
-            Dashboard
+            Tracks
           </Link>
           <span>/</span>
           <Link href="/system-design" className="hover:text-blue-500 transition-colors">
