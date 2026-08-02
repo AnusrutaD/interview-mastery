@@ -88,6 +88,7 @@ export function useProgress(options: UseProgressOptions = {}): UseProgressResult
         [problemId]: {
           mastery: patch.mastery ?? current[problemId]?.mastery ?? "unseen",
           notes: patch.notes ?? current[problemId]?.notes ?? null,
+          companies: current[problemId]?.companies ?? [],
           repeatCount:
             (current[problemId]?.repeatCount ?? 0) + (patch.mastery !== undefined ? 1 : 0),
           totalTimeSeconds: current[problemId]?.totalTimeSeconds ?? 0,

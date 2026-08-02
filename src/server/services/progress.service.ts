@@ -12,6 +12,7 @@ const PROGRESS_SELECT = {
   problemId: true,
   mastery: true,
   notes: true,
+  companies: true,
   repeatCount: true,
   totalTimeSeconds: true,
   lastMasteryAt: true,
@@ -30,6 +31,7 @@ function toRecord(row: ProgressRow): ProgressRecord {
   return {
     mastery: toMasteryLevel(row.mastery),
     notes: row.notes,
+    companies: row.companies ?? [],
     repeatCount: row.repeatCount ?? 0,
     totalTimeSeconds: row.totalTimeSeconds ?? 0,
     lastMasteryAt: (row.lastMasteryAt ?? row.updatedAt)?.toISOString() ?? null,
@@ -126,6 +128,7 @@ export async function upsertProgress(
         lastMasteryAt: now,
       }),
       ...(input.notes !== undefined && { notes: input.notes }),
+      ...(input.companies !== undefined && { companies: input.companies }),
       ...(seconds > 0 && { totalTimeSeconds: { increment: seconds } }),
     },
     create: {
@@ -133,6 +136,7 @@ export async function upsertProgress(
       problemId,
       mastery: input.mastery ?? "unseen",
       notes: input.notes ?? null,
+      companies: input.companies ?? [],
       repeatCount: isPractice ? 1 : 0,
       totalTimeSeconds: seconds,
       lastMasteryAt: isPractice ? now : null,

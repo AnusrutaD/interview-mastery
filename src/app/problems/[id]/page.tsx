@@ -10,8 +10,11 @@ import { DifficultyBadge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { categoryHints } from "@/data/categories";
 import { getProblemById, slugToCategory } from "@/data/problems";
+import { getProblemBrief } from "@/data/problemBriefs";
 import { MarkdownNote } from "@/features/notes/components/MarkdownNote";
 import { MasterySelector } from "@/features/problems/components/MasterySelector";
+import { CompanyTags } from "@/features/problems/components/CompanyTags";
+import { ProblemBriefCard } from "@/features/problems/components/ProblemBriefCard";
 import { ProblemNavigator } from "@/features/problems/components/ProblemNavigator";
 import { useProblemSession } from "@/features/progress/hooks/useProblemSession";
 import { SolveTimer } from "@/features/timer/components/SolveTimer";
@@ -27,6 +30,7 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
     session;
 
   const hints = useMemo(() => categoryHints(problem.category), [problem.category]);
+  const brief = useMemo(() => getProblemBrief(problem.id), [problem.id]);
   const interval = reviewIntervalFor(record.mastery);
   const masteryCfg = MASTERY_CONFIG[record.mastery];
 
@@ -107,6 +111,15 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
             lastSession={lastSession}
           />
 
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+            <CompanyTags
+              value={record.companies}
+              onChange={(companies) => session.setCompanies(companies)}
+              disabled={!isAuthenticated}
+              saving={saving}
+            />
+          </div>
+
           {record.lastMasteryAt && (
             <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-800">
               <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wide">
@@ -141,6 +154,8 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
             </a>
           </div>
         </Card>
+
+        {brief && <ProblemBriefCard brief={brief} />}
 
         <Card className="mb-4">
           <CardHeader

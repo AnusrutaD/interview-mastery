@@ -19,10 +19,32 @@ export interface Problem {
   url: string;
 }
 
+/**
+ * An original, condensed restatement of a problem — written for this app, not
+ * copied from LeetCode.
+ *
+ * This is deliberately *not* the full problem statement. When revising you do
+ * not want the narrative framing; you want the shape of the input, the idea
+ * that unlocks it, and the trap you fell into last time. The canonical
+ * statement stays one click away on LeetCode.
+ */
+export interface ProblemBrief {
+  /** What you are being asked to compute, in plain terms. */
+  task: string;
+  /** The observation the intended solution turns on. */
+  insight: string;
+  /** Target complexity, e.g. "O(n) time, O(n) space". */
+  complexity: string;
+  /** The edge case or mistake that most often costs the solve. */
+  pitfall?: string;
+}
+
 /** The user's record for one problem. Absent means never touched. */
 export interface ProgressRecord {
   mastery: MasteryLevel;
   notes: string | null;
+  /** Companies the user has personally seen this problem asked at. */
+  companies: string[];
   /** Times the user has recorded a mastery level. */
   repeatCount: number;
   totalTimeSeconds: number;
@@ -42,6 +64,7 @@ export type ProgressMap = Record<number, ProgressRecord>;
 export const EMPTY_PROGRESS: ProgressRecord = {
   mastery: "unseen",
   notes: null,
+  companies: [],
   repeatCount: 0,
   totalTimeSeconds: 0,
   lastMasteryAt: null,

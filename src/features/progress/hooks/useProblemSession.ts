@@ -7,6 +7,7 @@ import { isDue, reviewLabel } from "@/core/domain/review";
 import { useSolveTimer } from "@/features/timer/hooks/useSolveTimer";
 import {
   fetchProblemProgress,
+  saveCompanies,
   saveMastery,
   saveNotes,
   saveTimeOnly,
@@ -34,6 +35,7 @@ export interface UseProblemSessionResult {
   timer: ReturnType<typeof useSolveTimer>;
   setMastery: (level: MasteryLevel) => Promise<void>;
   setNotes: (notes: string) => Promise<void>;
+  setCompanies: (companies: string[]) => Promise<void>;
   dismissLastSession: () => void;
 }
 
@@ -185,6 +187,24 @@ export function useProblemSession(problemId: number | null): UseProblemSessionRe
     [problemId, record.notes]
   );
 
+  const setCompanies = useCallback(
+    async (companies: string[]) => {
+      if (problemId === null) return;
+      // Optimistic: chip add/remove should feel instant.
+      setRecord((current) => ({ ...current, companies }));
+      setSaving(true);
+      try {
+        setRecord(await saveCompanies(problemId, companies));
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not save companies");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [problemId]
+  );
+
   return {
     record,
     loading,
@@ -198,6 +218,7 @@ export function useProblemSession(problemId: number | null): UseProblemSessionRe
     timer,
     setMastery,
     setNotes,
+    setCompanies,
     dismissLastSession: useCallback(() => setLastSession(null), []),
   };
 }

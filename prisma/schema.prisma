@@ -63,6 +63,9 @@ model Progress {
   problemId     Int
   mastery       String    @default("unseen")
   notes         String?   @db.Text
+  /// Companies the user has personally seen this problem asked at.
+  /// User-owned observation, not scraped metadata.
+  companies        String[]  @default([])
   repeatCount      Int       @default(0)
   totalTimeSeconds Int       @default(0)
   lastMasteryAt    DateTime? // set only when mastery is intentionally updated

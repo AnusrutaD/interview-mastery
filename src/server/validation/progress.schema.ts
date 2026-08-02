@@ -11,6 +11,7 @@ export const upsertProgressSchema = z
     leetcodeSlug: z.string().min(1).optional(),
     mastery: z.enum(MASTERY_LEVELS).optional(),
     notes: z.string().max(50_000).nullable().optional(),
+    companies: z.array(z.string().trim().min(1).max(60)).max(30).optional(),
     timeSeconds: z.number().int().nonnegative().max(MAX_SESSION_SECONDS).optional(),
   })
   .refine((body) => body.problemId !== undefined || body.leetcodeSlug !== undefined, {
@@ -18,8 +19,11 @@ export const upsertProgressSchema = z
   })
   .refine(
     (body) =>
-      body.mastery !== undefined || body.notes !== undefined || body.timeSeconds !== undefined,
-    { message: "Nothing to update: provide mastery, notes or timeSeconds" }
+      body.mastery !== undefined ||
+      body.notes !== undefined ||
+      body.timeSeconds !== undefined ||
+      body.companies !== undefined,
+    { message: "Nothing to update: provide mastery, notes, companies or timeSeconds" }
   );
 
 export type UpsertProgressInput = z.infer<typeof upsertProgressSchema>;

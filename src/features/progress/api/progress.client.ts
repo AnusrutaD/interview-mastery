@@ -34,6 +34,7 @@ export interface SaveProgressInput {
   problemId: number;
   mastery?: MasteryLevel;
   notes?: string | null;
+  companies?: string[];
   /** Elapsed seconds to add to the problem's running total. */
   timeSeconds?: number;
 }
@@ -55,6 +56,10 @@ export function saveTimeOnly(problemId: number, timeSeconds: number) {
 
 export function saveNotes(problemId: number, notes: string) {
   return saveProgress({ problemId, notes });
+}
+
+export function saveCompanies(problemId: number, companies: string[]) {
+  return saveProgress({ problemId, companies });
 }
 
 export function saveMastery(problemId: number, mastery: MasteryLevel, timeSeconds?: number) {
