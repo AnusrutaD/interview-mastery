@@ -15,6 +15,7 @@ const NAV_LINKS = [
   // or topic page still highlights DSA rather than leaving the nav blank.
   { href: "/dsa", label: "DSA", owns: ["/topics", "/problems"] },
   { href: "/system-design", label: "System Design", owns: [] },
+  { href: "/collections", label: "My Lists", owns: [] },
   { href: "/activity", label: "Activity", owns: [] },
 ] as const;
 

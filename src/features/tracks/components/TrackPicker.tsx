@@ -137,6 +137,24 @@ export function TrackPicker({ studyItems }: TrackPickerProps) {
           />
         </div>
 
+        {/* Bring-your-own lists. Deliberately last: the built-in tracks are the
+            fastest way in, but this is where the product is heading. */}
+        <Link href="/collections" className="block group mt-4">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 group-hover:border-emerald-400 dark:group-hover:border-emerald-500 transition-colors flex items-center gap-4">
+            <span className="text-2xl shrink-0" aria-hidden>📚</span>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">My Lists</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                Bring your own problem set or playlist — paste links from anywhere and track them
+                the same way.
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+              Open →
+            </span>
+          </div>
+        </Link>
+
         {!isAuthenticated && status !== "loading" && (
           <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">
             <Link href="/login" className="text-blue-600 dark:text-blue-400 hover:underline">
