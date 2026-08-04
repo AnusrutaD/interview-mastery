@@ -127,70 +127,87 @@ describe("deriveFacets", () => {
 });
 
 describe("applyItemFilters", () => {
-  const items = join(
-    [
-      item({ id: "a", title: "Two Sum", difficulty: "Easy", topic: "Arrays", externalId: "two-sum" }),
-      item({ id: "b", title: "Merge Intervals", difficulty: "Medium", topic: "Intervals" }),
-      item({ id: "c", title: "Caching deep dive", kind: "video", externalId: "abc123" }),
-    ],
-    {
-      a: record({ mastery: "unsolved", lastPracticedAt: "2026-07-01T10:00:00.000Z" }),
-      b: record({ mastery: "mastered", lastPracticedAt: NOW.toISOString() }),
-    }
-  );
+  /**
+   * Built inside each test, not hoisted to a `const`.
+   *
+   * `joinItems` computes `due` from the current time, and a describe-level
+   * fixture is evaluated during collection — before `beforeEach` installs the
+   * fake timer. That version passed against the real clock for five days and
+   * then started failing once the mastered review interval had genuinely
+   * elapsed. A fixture that depends on wall-clock time is a time bomb, so the
+   * frozen clock has to be in place before it is constructed.
+   */
+  const fixture = () =>
+    join(
+      [
+        item({
+          id: "a",
+          title: "Two Sum",
+          difficulty: "Easy",
+          topic: "Arrays",
+          externalId: "two-sum",
+        }),
+        item({ id: "b", title: "Merge Intervals", difficulty: "Medium", topic: "Intervals" }),
+        item({ id: "c", title: "Caching deep dive", kind: "video", externalId: "abc123" }),
+      ],
+      {
+        a: record({ mastery: "unsolved", lastPracticedAt: "2026-07-01T10:00:00.000Z" }),
+        b: record({ mastery: "mastered", lastPracticedAt: NOW.toISOString() }),
+      }
+    );
 
   it("returns everything by default", () => {
-    expect(applyItemFilters(items, DEFAULT_ITEM_FILTERS)).toHaveLength(3);
+    expect(applyItemFilters(fixture(), DEFAULT_ITEM_FILTERS)).toHaveLength(3);
   });
 
   it("filters by difficulty", () => {
-    const result = applyItemFilters(items, { ...DEFAULT_ITEM_FILTERS, difficulty: "Easy" });
+    const result = applyItemFilters(fixture(), { ...DEFAULT_ITEM_FILTERS, difficulty: "Easy" });
     expect(result.map((i) => i.id)).toEqual(["a"]);
   });
 
   it("filters by kind", () => {
-    const result = applyItemFilters(items, { ...DEFAULT_ITEM_FILTERS, kind: "video" });
+    const result = applyItemFilters(fixture(), { ...DEFAULT_ITEM_FILTERS, kind: "video" });
     expect(result.map((i) => i.id)).toEqual(["c"]);
   });
 
   it("filters by mastery", () => {
-    const result = applyItemFilters(items, { ...DEFAULT_ITEM_FILTERS, mastery: "mastered" });
+    const result = applyItemFilters(fixture(), { ...DEFAULT_ITEM_FILTERS, mastery: "mastered" });
     expect(result.map((i) => i.id)).toEqual(["b"]);
   });
 
   it("filters to due only", () => {
-    const result = applyItemFilters(items, { ...DEFAULT_ITEM_FILTERS, dueOnly: true });
+    const result = applyItemFilters(fixture(), { ...DEFAULT_ITEM_FILTERS, dueOnly: true });
     expect(result.map((i) => i.id)).toEqual(["a"]);
   });
 
   it("filters to unsolved only", () => {
-    const result = applyItemFilters(items, { ...DEFAULT_ITEM_FILTERS, unsolvedOnly: true });
+    const result = applyItemFilters(fixture(), { ...DEFAULT_ITEM_FILTERS, unsolvedOnly: true });
     expect(result.map((i) => i.id)).toEqual(["a"]);
   });
 
   it("searches titles case-insensitively", () => {
-    const result = applyItemFilters(items, { ...DEFAULT_ITEM_FILTERS, search: "MERGE" });
+    const result = applyItemFilters(fixture(), { ...DEFAULT_ITEM_FILTERS, search: "MERGE" });
     expect(result.map((i) => i.id)).toEqual(["b"]);
   });
 
   it("searches topics", () => {
-    const result = applyItemFilters(items, { ...DEFAULT_ITEM_FILTERS, search: "arrays" });
+    const result = applyItemFilters(fixture(), { ...DEFAULT_ITEM_FILTERS, search: "arrays" });
     expect(result.map((i) => i.id)).toEqual(["a"]);
   });
 
   /** Pasting a LeetCode slug or a YouTube id should find the item. */
   it("searches external ids", () => {
     expect(
-      applyItemFilters(items, { ...DEFAULT_ITEM_FILTERS, search: "abc123" }).map((i) => i.id)
+      applyItemFilters(fixture(), { ...DEFAULT_ITEM_FILTERS, search: "abc123" }).map((i) => i.id)
     ).toEqual(["c"]);
   });
 
   it("ignores surrounding whitespace in the query", () => {
-    expect(applyItemFilters(items, { ...DEFAULT_ITEM_FILTERS, search: "  two  " })).toHaveLength(1);
+    expect(applyItemFilters(fixture(), { ...DEFAULT_ITEM_FILTERS, search: "  two  " })).toHaveLength(1);
   });
 
   it("combines filters conjunctively", () => {
-    const result = applyItemFilters(items, {
+    const result = applyItemFilters(fixture(), {
       ...DEFAULT_ITEM_FILTERS,
       difficulty: "Easy",
       mastery: "mastered",
@@ -199,7 +216,7 @@ describe("applyItemFilters", () => {
   });
 
   it("returns nothing when the query matches nothing", () => {
-    expect(applyItemFilters(items, { ...DEFAULT_ITEM_FILTERS, search: "zzzz" })).toHaveLength(0);
+    expect(applyItemFilters(fixture(), { ...DEFAULT_ITEM_FILTERS, search: "zzzz" })).toHaveLength(0);
   });
 });
 
