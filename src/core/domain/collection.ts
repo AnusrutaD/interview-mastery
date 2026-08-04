@@ -12,7 +12,7 @@
  * without modification.
  */
 import { isAttempted, isSolved, type MasteryLevel } from "./mastery";
-import { isDue } from "./review";
+import { isDueNow, isFlaggedForReview } from "./review";
 import { isISTToday } from "../time/ist";
 
 /* ── Kinds and sources ────────────────────────────────────────────────────── */
@@ -106,6 +106,12 @@ export interface ItemRecord {
   totalTimeSeconds: number;
   /** Set only on deliberate practice — drives review scheduling. */
   lastPracticedAt: string | null;
+  /** Times the item was revised without re-solving. */
+  revisionCount: number;
+  /** Set when revised. Pushes the review schedule out just as practice does. */
+  lastRevisedAt: string | null;
+  /** Set when the user asked to see this again. Cleared by the next review. */
+  flaggedForReviewAt: string | null;
   /** Accumulated genuine playback. Seek-resistant; see core/domain/watch.ts. */
   watchedSeconds: number;
   /** Resume point. Follows seeks. */
@@ -119,6 +125,9 @@ export const EMPTY_ITEM_RECORD: ItemRecord = {
   repeatCount: 0,
   totalTimeSeconds: 0,
   lastPracticedAt: null,
+  revisionCount: 0,
+  lastRevisedAt: null,
+  flaggedForReviewAt: null,
   watchedSeconds: 0,
   positionSeconds: 0,
 };
@@ -126,6 +135,8 @@ export const EMPTY_ITEM_RECORD: ItemRecord = {
 /** Item joined with the user's progress — what the UI renders. */
 export interface ItemWithProgress extends Item, ItemRecord {
   due: boolean;
+  /** Due because the user asked for it, not because the schedule said so. */
+  flagged: boolean;
 }
 
 export type ItemProgressMap = Record<string, ItemRecord>;
@@ -136,7 +147,14 @@ export function joinItems(
 ): ItemWithProgress[] {
   return items.map((item) => {
     const record = progress[item.id] ?? EMPTY_ITEM_RECORD;
-    return { ...item, ...record, due: isDue(record.mastery, record.lastPracticedAt) };
+    // Due state now folds in revisions and manual flags, so reading your notes
+    // clears an item and flagging one surfaces it. See core/domain/review.ts.
+    return {
+      ...item,
+      ...record,
+      due: isDueNow(record),
+      flagged: isFlaggedForReview(record),
+    };
   });
 }
 

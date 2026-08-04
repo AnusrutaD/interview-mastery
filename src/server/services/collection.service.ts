@@ -68,6 +68,41 @@ function toItem(row: ItemRow): Item {
   };
 }
 
+/**
+ * Map an `ItemProgress` row to the domain record.
+ *
+ * Defined once and used by every read path. This mapping was previously inlined
+ * at three call sites, so adding a field to `ItemRecord` broke all three
+ * independently — duplication that only announces itself when the shape changes.
+ */
+function toItemRecord(row: {
+  mastery: string;
+  notes: string | null;
+  companies: string[];
+  repeatCount: number;
+  totalTimeSeconds: number;
+  lastPracticedAt: Date | null;
+  revisionCount: number;
+  lastRevisedAt: Date | null;
+  flaggedForReviewAt: Date | null;
+  watchedSeconds: number;
+  positionSeconds: number;
+}): ItemRecord {
+  return {
+    mastery: toMasteryLevel(row.mastery),
+    notes: row.notes,
+    companies: row.companies ?? [],
+    repeatCount: row.repeatCount ?? 0,
+    totalTimeSeconds: row.totalTimeSeconds ?? 0,
+    lastPracticedAt: row.lastPracticedAt?.toISOString() ?? null,
+    revisionCount: row.revisionCount ?? 0,
+    lastRevisedAt: row.lastRevisedAt?.toISOString() ?? null,
+    flaggedForReviewAt: row.flaggedForReviewAt?.toISOString() ?? null,
+    watchedSeconds: row.watchedSeconds ?? 0,
+    positionSeconds: row.positionSeconds ?? 0,
+  };
+}
+
 /* ── Ownership ────────────────────────────────────────────────────────────── */
 
 /**
@@ -168,16 +203,7 @@ export async function getCollection(
 
   const progress: ItemProgressMap = {};
   for (const row of progressRows) {
-    progress[row.itemId] = {
-      mastery: toMasteryLevel(row.mastery),
-      notes: row.notes,
-      companies: row.companies ?? [],
-      repeatCount: row.repeatCount ?? 0,
-      totalTimeSeconds: row.totalTimeSeconds ?? 0,
-      lastPracticedAt: row.lastPracticedAt?.toISOString() ?? null,
-      watchedSeconds: row.watchedSeconds ?? 0,
-      positionSeconds: row.positionSeconds ?? 0,
-    };
+    progress[row.itemId] = toItemRecord(row);
   }
 
   return { collection: toCollection(collection), items: items.map(toItem), progress };
@@ -357,16 +383,7 @@ export async function upsertItemProgress(
     },
   });
 
-  return {
-    mastery: toMasteryLevel(row.mastery),
-    notes: row.notes,
-    companies: row.companies ?? [],
-    repeatCount: row.repeatCount ?? 0,
-    totalTimeSeconds: row.totalTimeSeconds ?? 0,
-    lastPracticedAt: row.lastPracticedAt?.toISOString() ?? null,
-    watchedSeconds: row.watchedSeconds ?? 0,
-    positionSeconds: row.positionSeconds ?? 0,
-  };
+  return toItemRecord(row);
 }
 
 /* ── Watch progress ───────────────────────────────────────────────────────── */
@@ -422,15 +439,5 @@ export async function saveWatchProgress(
     },
   });
 
-  return {
-    mastery: toMasteryLevel(row.mastery),
-    notes: row.notes,
-    companies: row.companies ?? [],
-    repeatCount: row.repeatCount ?? 0,
-    totalTimeSeconds: row.totalTimeSeconds ?? 0,
-    lastPracticedAt: row.lastPracticedAt?.toISOString() ?? null,
-    watchedSeconds: row.watchedSeconds ?? 0,
-    positionSeconds: row.positionSeconds ?? 0,
-    complete,
-  };
+  return { ...toItemRecord(row), complete };
 }

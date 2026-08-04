@@ -101,6 +101,13 @@ model Collection {
   targetUnit   String? @default("count")
   targetValue  Int?
 
+  /// Revision pacing, independent of the solve target above. A week can
+  /// legitimately be all revision and no new problems, so one target cannot
+  /// describe both. Always counted, never timed — revisions carry no duration.
+  /// period: "daily" | "weekly" | "monthly"
+  revisionTargetPeriod String? @default("weekly")
+  revisionTargetValue  Int?
+
   /// Superseded by the target fields above. Retained so the existing backfill
   /// and any in-flight data keep working until a later release drops them.
   dailyTarget  Int?
@@ -192,6 +199,22 @@ model ItemProgress {
   totalTimeSeconds Int       @default(0)
   lastPracticedAt  DateTime?
 
+  /// Revisions: clearing a due item by going back over it without re-solving.
+  ///
+  /// Counted separately from solving on purpose — folding them together would
+  /// make a day of skimming notes look identical to a day of real work.
+  ///
+  /// Only the latest revision per item is kept, so a period target measures
+  /// *distinct items revised*, not revision events. See core/domain/revision.ts.
+  revisionCount Int       @default(0)
+  lastRevisedAt DateTime?
+
+  /// Set when the user explicitly asks to see a solved item again. Overrides
+  /// the schedule until the next practice or revision, which clears it by
+  /// being newer — storing a timestamp rather than a boolean is what makes
+  /// that comparison possible.
+  flaggedForReviewAt DateTime?
+
   /// Video watch tracking.
   ///
   /// `watchedSeconds` accumulates only plausible playback deltas, so seeking to
@@ -207,6 +230,8 @@ model ItemProgress {
 
   @@unique([userId, itemId])
   @@index([userId, lastPracticedAt])
+  @@index([userId, lastRevisedAt])
+  @@index([userId, flaggedForReviewAt])
 }
 
 model Progress {

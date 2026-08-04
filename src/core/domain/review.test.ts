@@ -1,5 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { daysUntilReview, isDue, REVIEW_INTERVAL_DAYS, reviewLabel } from "./review";
+import {
+  daysUntilReview,
+  isDue,
+  isDueNow,
+  isFlaggedForReview,
+  REVIEW_INTERVAL_DAYS,
+  reviewAnchor,
+  reviewLabel,
+} from "./review";
 
 /**
  * All cases are anchored to a fixed "now" in IST so they are stable regardless
@@ -95,5 +103,140 @@ describe("intervals", () => {
   it("increase with mastery", () => {
     expect(REVIEW_INTERVAL_DAYS.learning).toBeLessThan(REVIEW_INTERVAL_DAYS.familiar);
     expect(REVIEW_INTERVAL_DAYS.familiar).toBeLessThan(REVIEW_INTERVAL_DAYS.mastered);
+  });
+});
+
+describe("reviewAnchor", () => {
+  it("uses whichever of practice and revision is later", () => {
+    const anchor = reviewAnchor({
+      mastery: "familiar",
+      lastPracticedAt: "2026-07-20T10:00:00.000Z",
+      lastRevisedAt: "2026-07-26T10:00:00.000Z",
+    });
+    expect(new Date(anchor as Date).toISOString()).toBe("2026-07-26T10:00:00.000Z");
+  });
+
+  it("falls back to either one alone", () => {
+    expect(
+      new Date(
+        reviewAnchor({ mastery: "familiar", lastPracticedAt: null, lastRevisedAt: "2026-07-26T10:00:00.000Z" }) as Date
+      ).toISOString()
+    ).toBe("2026-07-26T10:00:00.000Z");
+    expect(
+      new Date(
+        reviewAnchor({ mastery: "familiar", lastPracticedAt: "2026-07-20T10:00:00.000Z" }) as Date
+      ).toISOString()
+    ).toBe("2026-07-20T10:00:00.000Z");
+  });
+
+  it("is null when the item has never been touched", () => {
+    expect(reviewAnchor({ mastery: "unseen", lastPracticedAt: null })).toBeNull();
+  });
+});
+
+describe("isDueNow", () => {
+  /** The whole point of the feature: reading your notes clears the due state. */
+  it("clears a due item when it was revised today", () => {
+    const state = {
+      mastery: "familiar" as const,
+      lastPracticedAt: "2026-07-01T10:00:00.000Z",
+      lastRevisedAt: NOW.toISOString(),
+    };
+    expect(isDue(state.mastery, state.lastPracticedAt)).toBe(true);
+    expect(isDueNow(state)).toBe(false);
+  });
+
+  it("still comes due again once the interval elapses after a revision", () => {
+    expect(
+      isDueNow({
+        mastery: "learning",
+        lastPracticedAt: "2026-07-01T10:00:00.000Z",
+        lastRevisedAt: "2026-07-26T10:00:00.000Z",
+      })
+    ).toBe(true);
+  });
+
+  it("forces an item due when the user flags it", () => {
+    const state = {
+      mastery: "mastered" as const,
+      lastPracticedAt: NOW.toISOString(),
+      flaggedForReviewAt: NOW.toISOString(),
+    };
+    expect(isDue(state.mastery, state.lastPracticedAt)).toBe(false);
+    expect(isDueNow(state)).toBe(true);
+  });
+
+  /**
+   * The tie case, and the one that matters most in practice: flagging a problem
+   * you solved earlier the same day. Under a strict `>` comparison the flag
+   * loses to an equal anchor and the item stays not-due, which defeats the
+   * feature entirely.
+   */
+  it("honours a flag set at the same instant as the last practice", () => {
+    const at = NOW.toISOString();
+    expect(isDueNow({ mastery: "mastered", lastPracticedAt: at, flaggedForReviewAt: at })).toBe(
+      true
+    );
+    expect(
+      isFlaggedForReview({ mastery: "mastered", lastPracticedAt: at, flaggedForReviewAt: at })
+    ).toBe(true);
+  });
+
+  /**
+   * A flag that outlived its review would pin the item as due forever and make
+   * revising it look broken.
+   */
+  it("lets a later revision clear an earlier flag", () => {
+    expect(
+      isDueNow({
+        mastery: "mastered",
+        lastPracticedAt: "2026-07-01T10:00:00.000Z",
+        flaggedForReviewAt: "2026-07-20T10:00:00.000Z",
+        lastRevisedAt: NOW.toISOString(),
+      })
+    ).toBe(false);
+  });
+
+  it("flags an unseen item due even with no history", () => {
+    expect(
+      isDueNow({ mastery: "unseen", lastPracticedAt: null, flaggedForReviewAt: NOW.toISOString() })
+    ).toBe(true);
+  });
+
+  it("matches isDue when there is no revision or flag", () => {
+    for (const at of [null, "2026-07-01T10:00:00.000Z", NOW.toISOString()]) {
+      for (const mastery of ["unseen", "unsolved", "learning", "familiar", "mastered"] as const) {
+        expect(isDueNow({ mastery, lastPracticedAt: at })).toBe(isDue(mastery, at));
+      }
+    }
+  });
+});
+
+describe("isFlaggedForReview", () => {
+  it("is true while the flag is newer than the last review", () => {
+    expect(
+      isFlaggedForReview({
+        mastery: "mastered",
+        lastPracticedAt: "2026-07-01T10:00:00.000Z",
+        flaggedForReviewAt: NOW.toISOString(),
+      })
+    ).toBe(true);
+  });
+
+  it("is false once the item has been revised since", () => {
+    expect(
+      isFlaggedForReview({
+        mastery: "mastered",
+        lastPracticedAt: "2026-07-01T10:00:00.000Z",
+        flaggedForReviewAt: "2026-07-20T10:00:00.000Z",
+        lastRevisedAt: NOW.toISOString(),
+      })
+    ).toBe(false);
+  });
+
+  it("is false when nothing was ever flagged", () => {
+    expect(isFlaggedForReview({ mastery: "familiar", lastPracticedAt: NOW.toISOString() })).toBe(
+      false
+    );
   });
 });

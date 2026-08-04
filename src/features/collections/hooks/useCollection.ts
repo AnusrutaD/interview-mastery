@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
+  EMPTY_ITEM_RECORD,
   joinItems,
   summarizeCollection,
   suggestNextItem,
@@ -83,15 +84,15 @@ export function useCollection(collectionId: string): UseCollectionResult {
       setProgress((current) => ({
         ...current,
         [itemId]: {
+          // Spreading the existing record keeps fields this action does not own
+          // — watch state, revision history — instead of resetting them, and
+          // means a new field cannot be silently dropped here again.
+          ...(current[itemId] ?? EMPTY_ITEM_RECORD),
           mastery,
-          notes: current[itemId]?.notes ?? null,
-          companies: current[itemId]?.companies ?? [],
           repeatCount: (current[itemId]?.repeatCount ?? 0) + 1,
-          totalTimeSeconds: current[itemId]?.totalTimeSeconds ?? 0,
           lastPracticedAt: new Date().toISOString(),
-          // Watch state is owned by the player, never by a mastery click.
-          watchedSeconds: current[itemId]?.watchedSeconds ?? 0,
-          positionSeconds: current[itemId]?.positionSeconds ?? 0,
+          // Solving satisfies a manual review request, same as revising.
+          flaggedForReviewAt: null,
         },
       }));
 
