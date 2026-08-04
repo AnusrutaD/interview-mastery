@@ -12,6 +12,7 @@ import type { ProgressMap } from "@/core/domain/progress";
 import type { StudyProgressMap } from "@/server/services/study.service";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { cn } from "@/lib/cn";
+import { problemHref } from "@/data/catalog";
 
 export interface TrackPickerProps {
   /** Slug + title of every system-design item, passed from the server. */
@@ -120,7 +121,7 @@ export function TrackPicker({ studyItems }: TrackPickerProps) {
             stats={dsaStats}
             loaded={loaded && isAuthenticated}
             continueLabel={nextProblem?.title}
-            continueHref={nextProblem ? `/problems/${nextProblem.id}` : undefined}
+            continueHref={nextProblem ? (problemHref(nextProblem.id) ?? undefined) : undefined}
           />
 
           <TrackCard

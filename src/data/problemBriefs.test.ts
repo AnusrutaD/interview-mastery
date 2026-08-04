@@ -1,16 +1,20 @@
 import { describe, expect, it } from "vitest";
-import BRIEFS, { BRIEF_IDS, getProblemBrief, hasProblemBrief } from "./problemBriefs";
-import { PROBLEMS } from "./problems";
+import BRIEFS, { BRIEF_SLUGS, getProblemBrief, hasProblemBrief } from "./problemBriefs";
+import { staticCatalog } from "./staticCatalog";
+
+const CATALOGUE = staticCatalog.list();
 
 describe("coverage", () => {
   it("has a brief for every problem in the catalogue", () => {
-    const missing = PROBLEMS.filter((p) => !hasProblemBrief(p.id)).map((p) => `${p.id} ${p.title}`);
+    const missing = CATALOGUE.filter((p) => !hasProblemBrief(p.slug)).map(
+      (p) => `${p.slug} ${p.title}`
+    );
     expect(missing).toEqual([]);
   });
 
   it("has no briefs for problems that do not exist", () => {
-    const known = new Set(PROBLEMS.map((p) => p.id));
-    expect(BRIEF_IDS.filter((id) => !known.has(id))).toEqual([]);
+    const known = new Set(CATALOGUE.map((p) => p.slug));
+    expect(BRIEF_SLUGS.filter((slug) => !known.has(slug))).toEqual([]);
   });
 });
 
@@ -73,19 +77,27 @@ describe("content quality", () => {
    * title is a placeholder, not a restatement — catch those.
    */
   it("does not simply restate the problem title", () => {
-    for (const problem of PROBLEMS) {
-      const brief = getProblemBrief(problem.id)!;
+    for (const problem of CATALOGUE) {
+      const brief = getProblemBrief(problem.slug)!;
       expect(brief.task.toLowerCase().trim()).not.toBe(problem.title.toLowerCase().trim());
     }
   });
 });
 
 describe("lookup", () => {
-  it("returns null for an unknown id", () => {
-    expect(getProblemBrief(9999)).toBeNull();
+  it("returns null for an unknown slug", () => {
+    expect(getProblemBrief("not-a-real-problem")).toBeNull();
   });
 
-  it("returns the brief for a known id", () => {
-    expect(getProblemBrief(3)?.task).toContain("two indices");
+  it("returns the brief for a known slug", () => {
+    expect(getProblemBrief("two-sum")?.task).toContain("two indices");
+  });
+
+  /**
+   * The point of rekeying: a brief is now reachable by the name of the problem,
+   * not by its place in a list that may be reordered.
+   */
+  it("is unaffected by curriculum order", () => {
+    expect(getProblemBrief("trapping-rain-water")).not.toBeNull();
   });
 });

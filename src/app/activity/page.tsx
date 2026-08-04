@@ -19,6 +19,7 @@ import {
 } from "@/features/activity/lib/periods";
 import { useProgress } from "@/features/progress/hooks/useProgress";
 import { cn } from "@/lib/cn";
+import { problemHref } from "@/data/catalog";
 
 export default function ActivityPage() {
   const { problems, loading, isAuthenticated } = useProgress();
@@ -193,7 +194,7 @@ export default function ActivityPage() {
 
                   <div className="flex gap-2 shrink-0">
                     <Link
-                      href={`/problems/${problem.id}`}
+                      href={problemHref(problem.id) ?? "#"}
                       className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
                     >
                       Detail →

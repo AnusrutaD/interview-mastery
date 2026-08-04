@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Spinner } from "@/components/ui/Spinner";
 import { categoryIcon } from "@/data/categories";
-import { CATEGORIES, categoryToSlug } from "@/data/problems";
+import { categoryToSlug } from "@/data/problems";
+import { catalog } from "@/data/catalog";
 import { useProgress } from "@/features/progress/hooks/useProgress";
 
 interface TopicSummary {
@@ -22,7 +23,7 @@ interface TopicSummary {
 }
 
 function summarizeTopics(problems: readonly ProblemWithProgress[]): TopicSummary[] {
-  return CATEGORIES.map((category) => {
+  return catalog.categories().map((category) => {
     const items = problems.filter((p) => p.category === category);
     const attempted = items.filter((p) => p.mastery !== "unseen").length;
     const byDifficulty = Object.fromEntries(

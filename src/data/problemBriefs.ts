@@ -9,13 +9,20 @@
  * statement, official test cases and the submission judge all remain on
  * LeetCode, one click away.
  *
- * Keyed by internal problem id (see `problems.ts`).
+ * Keyed by LeetCode slug — the same stable identity `Item.externalId` and the
+ * Chrome extension use.
+ *
+ * Previously keyed by an internal integer id that also encoded curriculum
+ * order, which meant inserting or reordering a problem silently repointed
+ * these briefs at the wrong entries. A slug names one problem and nothing
+ * else, so a problem can move anywhere without its brief following the wrong
+ * one. It also means a user who adds `two-sum` by hand inherits this brief.
  */
 import type { ProblemBrief } from "@/core/domain/progress";
 
-const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
+const BRIEFS: Readonly<Record<string, ProblemBrief>> = {
   /* ── Arrays & Hashing ─────────────────────────────────────────────────── */
-  1: {
+  "contains-duplicate": {
     task: "Return true if any value appears more than once in an integer array.",
     signature: "containsDuplicate(nums: int[]) -> boolean",
     example: {
@@ -29,7 +36,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(n) space",
     pitfall: "Sorting first works but costs O(n log n) — only prefer it if O(1) extra space is required.",
   },
-  2: {
+  "valid-anagram": {
     task: "Decide whether two strings are anagrams of each other.",
     signature: "isAnagram(s: string, t: string) -> boolean",
     example: {
@@ -43,7 +50,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space for a fixed alphabet",
     pitfall: "Check lengths first. Sorting both is a valid O(n log n) fallback if no extra space is allowed.",
   },
-  3: {
+  "two-sum": {
     task: "Find the two indices whose values sum to a target.",
     signature: "twoSum(nums: int[], target: int) -> int[]",
     example: {
@@ -61,7 +68,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(n) space",
     pitfall: "Insert into the map after checking, otherwise an element can pair with itself.",
   },
-  4: {
+  "group-anagrams": {
     task: "Group words that are anagrams of one another.",
     signature: "groupAnagrams(strs: string[]) -> string[][]",
     example: {
@@ -75,7 +82,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n·k) time with count keys, O(n·k) space",
     pitfall: "An empty string is a valid word and forms its own group — do not skip it.",
   },
-  5: {
+  "top-k-frequent-elements": {
     task: "Return the k most frequent elements.",
     signature: "topKFrequent(nums: int[], k: int) -> int[]",
     example: {
@@ -89,7 +96,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time with bucket sort, O(n) space",
     pitfall: "A heap gives O(n log k) and is easier to write — bucket sort is the O(n) answer if pressed.",
   },
-  6: {
+  "product-of-array-except-self": {
     task: "For each index, return the product of all other elements — without using division.",
     signature: "productExceptSelf(nums: int[]) -> int[]",
     example: {
@@ -103,7 +110,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) extra space excluding output",
     pitfall: "The no-division rule exists precisely because zeros break the divide-the-total trick.",
   },
-  7: {
+  "valid-sudoku": {
     task: "Validate a partially filled 9×9 Sudoku board.",
     signature: "isValidSudoku(board: char[9][9]) -> boolean",
     example: {
@@ -121,7 +128,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(1) — the board is fixed size",
     pitfall: "Box index is `(r / 3) * 3 + (c / 3)`. Getting that expression wrong is the usual failure.",
   },
-  8: {
+  "encode-and-decode-strings": {
     task: "Encode a list of strings into one string and decode it back exactly.",
     signature: "encode(strs: string[]) -> string  /  decode(s: string) -> string[]",
     example: {
@@ -139,7 +146,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) both directions",
     pitfall: "Delimiter-only schemes are the trap the problem is built around — they cannot be made safe.",
   },
-  9: {
+  "longest-consecutive-sequence": {
     task: "Find the length of the longest run of consecutive integers present in an array.",
     signature: "longestConsecutive(nums: int[]) -> int",
     example: {
@@ -155,7 +162,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Two Pointers ─────────────────────────────────────────────────────── */
-  10: {
+  "valid-palindrome": {
     task: "Check whether a string is a palindrome, ignoring case and non-alphanumerics.",
     signature: "isPalindrome(s: string) -> boolean",
     example: {
@@ -172,7 +179,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Guard the inner skip loops against crossing the pointers on all-punctuation input.",
   },
-  11: {
+  "two-sum-ii-input-array-is-sorted": {
     task: "In a sorted array, find two values summing to a target. The answer is 1-indexed.",
     signature: "twoSumSorted(numbers: int[], target: int) -> int[]",
     example: {
@@ -186,7 +193,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "The answer is 1-indexed. Easy marks lost here.",
   },
-  12: {
+  "3sum": {
     task: "Find all unique triplets summing to zero.",
     signature: "threeSum(nums: int[]) -> int[][]",
     example: {
@@ -199,7 +206,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n²) time, O(1) extra space",
     pitfall: "Deduplication is the whole difficulty — skip repeats at the fixed index and after each pointer move.",
   },
-  13: {
+  "container-with-most-water": {
     task: "Pick two lines forming the container that holds the most water.",
     signature: "maxArea(height: int[]) -> int",
     example: {
@@ -213,7 +220,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Height is the min of the pair, width is the index gap — not the sum.",
   },
-  14: {
+  "trapping-rain-water": {
     task: "Compute the total rainwater trapped by an elevation map.",
     signature: "trap(height: int[]) -> int",
     example: {
@@ -229,7 +236,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Sliding Window ───────────────────────────────────────────────────── */
-  15: {
+  "best-time-to-buy-and-sell-stock": {
     task: "Find the maximum profit from one buy and one later sell.",
     signature: "maxProfit(prices: int[]) -> int",
     example: {
@@ -242,7 +249,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Profit cannot be negative — return 0 for a strictly falling series.",
   },
-  16: {
+  "longest-substring-without-repeating-characters": {
     task: "Length of the longest substring with no repeated characters.",
     signature: "lengthOfLongestSubstring(s: string) -> int",
     example: {
@@ -255,7 +262,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(min(n, alphabet)) space",
     pitfall: "Jumping left straight past the previous occurrence is faster, but only if you never move it backwards.",
   },
-  17: {
+  "longest-repeating-character-replacement": {
     task: "Longest substring of one repeated character after at most k replacements.",
     signature: "characterReplacement(s: string, k: int) -> int",
     example: {
@@ -268,7 +275,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "The max-frequency count need not shrink when the window shrinks — the answer stays correct either way.",
   },
-  18: {
+  "permutation-in-string": {
     task: "Does s2 contain any permutation of s1 as a substring?",
     signature: "checkInclusion(s1: string, s2: string) -> boolean",
     example: {
@@ -281,7 +288,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Rebuilding the count each step makes it O(n·k). Update incrementally — add one, remove one.",
   },
-  19: {
+  "minimum-window-substring": {
     task: "Smallest substring of s containing every character of t, counting multiplicity.",
     signature: "minWindow(s: string, t: string) -> string",
     example: {
@@ -299,7 +306,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(k) space",
     pitfall: "Multiplicity matters — 'aa' in t needs two 'a's. Track a satisfied-count, not just presence.",
   },
-  20: {
+  "sliding-window-maximum": {
     task: "Maximum of every window of size k.",
     signature: "maxSlidingWindow(nums: int[], k: int) -> int[]",
     example: {
@@ -314,7 +321,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Stack ────────────────────────────────────────────────────────────── */
-  21: {
+  "valid-parentheses": {
     task: "Validate that brackets are correctly matched and nested.",
     signature: "isValid(s: string) -> boolean",
     example: {
@@ -327,7 +334,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(n) space",
     pitfall: "An empty stack on a closer is invalid, and a non-empty stack at the end is too.",
   },
-  22: {
+  "min-stack": {
     task: "Stack supporting push, pop, top and getMin, all in O(1).",
     signature: "MinStack: push(v), pop(), top() -> int, getMin() -> int",
     example: {
@@ -340,7 +347,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(1) per operation, O(n) space",
     pitfall: "Push to the min stack on every push, otherwise pops desynchronise the two stacks.",
   },
-  23: {
+  "evaluate-reverse-polish-notation": {
     task: "Evaluate an expression given in reverse Polish notation.",
     signature: "evalRPN(tokens: string[]) -> int",
     example: {
@@ -357,7 +364,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(n) space",
     pitfall: "Operand order matters for − and ÷ — the first pop is the right-hand side.",
   },
-  24: {
+  "generate-parentheses": {
     task: "Generate all valid combinations of n pairs of parentheses.",
     signature: "generateParenthesis(n: int) -> string[]",
     example: {
@@ -371,7 +378,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(4ⁿ / √n) — the Catalan number of results",
     pitfall: "The close < open guard is what enforces validity; without it you generate then filter.",
   },
-  25: {
+  "daily-temperatures": {
     task: "For each day, how many days until a warmer temperature.",
     signature: "dailyTemperatures(temperatures: int[]) -> int[]",
     example: {
@@ -385,7 +392,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(n) space",
     pitfall: "Unresolved indices keep their default 0 — do not overwrite them at the end.",
   },
-  26: {
+  "car-fleet": {
     task: "Count how many car fleets arrive at a destination.",
     signature: "carFleet(target: int, position: int[], speed: int[]) -> int",
     example: {
@@ -403,7 +410,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n log n) time, O(n) space",
     pitfall: "Compare against the current fleet's arrival time, not the immediately preceding car's.",
   },
-  27: {
+  "largest-rectangle-in-histogram": {
     task: "Largest rectangle that fits inside a histogram.",
     signature: "largestRectangleArea(heights: int[]) -> int",
     example: {
@@ -419,7 +426,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Binary Search ────────────────────────────────────────────────────── */
-  28: {
+  "binary-search": {
     task: "Find a target's index in a sorted array, or −1 if absent.",
     signature: "search(nums: int[], target: int) -> int",
     example: {
@@ -432,7 +439,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(log n) time, O(1) space",
     pitfall: "Use `left + (right − left) / 2` and be consistent about whether right is inclusive.",
   },
-  29: {
+  "search-a-2d-matrix": {
     task: "Search a matrix whose rows are sorted and where each row starts after the previous row ends.",
     signature: "searchMatrix(matrix: int[][], target: int) -> boolean",
     example: {
@@ -445,7 +452,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(log(m·n)) time, O(1) space",
     pitfall: "row = idx / cols, col = idx % cols. Swapping those is the usual slip.",
   },
-  30: {
+  "koko-eating-bananas": {
     task: "Smallest eating speed that finishes all banana piles within h hours.",
     signature: "minEatingSpeed(piles: int[], h: int) -> int",
     example: {
@@ -458,7 +465,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n log maxPile) time, O(1) space",
     pitfall: "Hours for a pile is ceil(pile / k) — integer division silently truncates.",
   },
-  31: {
+  "find-minimum-in-rotated-sorted-array": {
     task: "Find the minimum value in a rotated sorted array of distinct numbers.",
     signature: "findMin(nums: int[]) -> int",
     example: {
@@ -471,7 +478,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(log n) time, O(1) space",
     pitfall: "Comparing against the left element instead needs an extra case — right is cleaner.",
   },
-  32: {
+  "search-in-rotated-sorted-array": {
     task: "Search for a target in a rotated sorted array.",
     signature: "search(nums: int[], target: int) -> int",
     example: {
@@ -484,7 +491,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(log n) time, O(1) space",
     pitfall: "Range checks must be inclusive at the sorted half's endpoints.",
   },
-  33: {
+  "time-based-key-value-store": {
     task: "Key-value store where get returns the value set at or before a given timestamp.",
     signature: "TimeMap: set(key, value, timestamp)  /  get(key, timestamp) -> string",
     example: {
@@ -501,7 +508,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(1) set, O(log n) get",
     pitfall: "Return the greatest earlier value, not the nearest — later timestamps never count.",
   },
-  34: {
+  "median-of-two-sorted-arrays": {
     task: "Median of two sorted arrays, in logarithmic time.",
     signature: "findMedianSortedArrays(nums1: int[], nums2: int[]) -> double",
     example: {
@@ -517,7 +524,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Linked List ──────────────────────────────────────────────────────── */
-  35: {
+  "reverse-linked-list": {
     task: "Reverse a singly linked list.",
     signature: "reverseList(head: ListNode) -> ListNode",
     example: { input: "1 → 2 → 3", output: "3 → 2 → 1", why: "Every next pointer is flipped to point backwards." },
@@ -526,7 +533,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Save curr.next before overwriting it, or you lose the rest of the list.",
   },
-  36: {
+  "merge-two-sorted-lists": {
     task: "Merge two sorted linked lists into one sorted list.",
     signature: "mergeTwoLists(a: ListNode, b: ListNode) -> ListNode",
     example: { input: "a = 1 → 4, b = 2 → 3", output: "1 → 2 → 3 → 4", why: "Nodes are spliced in ascending order." },
@@ -535,7 +542,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n + m) time, O(1) space",
     pitfall: "Attach the non-empty remainder at the end — do not stop at the shorter list.",
   },
-  37: {
+  "reorder-list": {
     task: "Reorder a list as first, last, second, second-last, and so on.",
     signature: "reorderList(head: ListNode) -> void",
     example: { input: "1 → 2 → 3 → 4", output: "1 → 4 → 2 → 3", why: "Front and back are interleaved inward." },
@@ -544,7 +551,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Terminate the first half before merging, otherwise you build a cycle.",
   },
-  38: {
+  "remove-nth-node-from-end-of-list": {
     task: "Remove the nth node counting from the end of the list.",
     signature: "removeNthFromEnd(head: ListNode, n: int) -> ListNode",
     example: { input: "1 → 2 → 3 → 4, n = 2", output: "1 → 2 → 4", why: "The 2nd node from the end is 3." },
@@ -553,7 +560,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, one pass",
     pitfall: "Removing the head needs a dummy node, or a special case you will forget.",
   },
-  39: {
+  "copy-list-with-random-pointer": {
     task: "Deep-copy a linked list where each node also has a random pointer.",
     signature: "copyRandomList(head: Node) -> Node",
     example: {
@@ -566,7 +573,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(n) space",
     pitfall: "The O(1)-space version interleaves copies into the original list, then splits them apart.",
   },
-  40: {
+  "add-two-numbers": {
     task: "Add two numbers whose digits are stored in reverse order as linked lists.",
     signature: "addTwoNumbers(l1: ListNode, l2: ListNode) -> ListNode",
     example: {
@@ -579,7 +586,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(max(n, m)) time",
     pitfall: "A leftover carry after both lists end needs one more node.",
   },
-  41: {
+  "linked-list-cycle": {
     task: "Detect whether a linked list contains a cycle.",
     signature: "hasCycle(head: ListNode) -> boolean",
     example: {
@@ -592,7 +599,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Check fast and fast.next before advancing two steps.",
   },
-  42: {
+  "find-the-duplicate-number": {
     task: "Find the duplicate among n+1 integers drawn from [1, n], without modifying the array.",
     signature: "findDuplicate(nums: int[]) -> int",
     example: {
@@ -605,7 +612,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "After the pointers meet, restart one at index 0 — the second meeting point is the answer.",
   },
-  43: {
+  "lru-cache": {
     task: "Least-recently-used cache with O(1) get and put.",
     signature: "LRUCache(capacity): get(key) -> int  /  put(key, value)",
     example: {
@@ -618,7 +625,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(1) per operation",
     pitfall: "get is also a use — it must move the node to the front, not just return the value.",
   },
-  44: {
+  "merge-k-sorted-lists": {
     task: "Merge k sorted linked lists into one sorted list.",
     signature: "mergeKLists(lists: ListNode[]) -> ListNode",
     example: {
@@ -631,7 +638,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(N log k) time, O(1) space for pairwise merging",
     pitfall: "Sequential merging is O(N·k). A min-heap of heads is the other O(N log k) answer.",
   },
-  45: {
+  "reverse-nodes-in-k-group": {
     task: "Reverse the list in consecutive groups of k nodes.",
     signature: "reverseKGroup(head: ListNode, k: int) -> ListNode",
     example: {
@@ -646,7 +653,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Trees ────────────────────────────────────────────────────────────── */
-  46: {
+  "invert-binary-tree": {
     task: "Mirror a binary tree left-to-right.",
     signature: "invertTree(root: TreeNode) -> TreeNode",
     example: { input: "root = [2, 1, 3]", output: "[2, 3, 1]", why: "Each node's children are swapped." },
@@ -655,7 +662,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(h) space",
     pitfall: "Null check first — the base case is the whole termination condition.",
   },
-  47: {
+  "maximum-depth-of-binary-tree": {
     task: "Depth of the deepest leaf.",
     signature: "maxDepth(root: TreeNode) -> int",
     example: { input: "root = [1, null, 2, null, 3]", output: "3", why: "The right-leaning chain has three levels." },
@@ -664,7 +671,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(h) space",
     pitfall: "An empty tree is depth 0, not 1.",
   },
-  48: {
+  "diameter-of-binary-tree": {
     task: "Longest path between any two nodes, measured in edges.",
     signature: "diameterOfBinaryTree(root: TreeNode) -> int",
     example: {
@@ -678,7 +685,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(h) space",
     pitfall: "The answer need not pass through the root — that is why it is tracked separately from the return value.",
   },
-  49: {
+  "balanced-binary-tree": {
     task: "Decide whether every node's two subtrees differ in height by at most 1.",
     signature: "isBalanced(root: TreeNode) -> boolean",
     example: {
@@ -691,7 +698,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(h) space",
     pitfall: "Calling a separate height() inside the recursion makes it O(n²).",
   },
-  50: {
+  "same-tree": {
     task: "Are two binary trees structurally identical with equal values?",
     signature: "isSameTree(p: TreeNode, q: TreeNode) -> boolean",
     example: {
@@ -704,7 +711,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(h) space",
     pitfall: "Both-null is true; one-null is false. Handle those before dereferencing.",
   },
-  51: {
+  "subtree-of-another-tree": {
     task: "Does one tree contain another as a subtree?",
     signature: "isSubtree(root: TreeNode, subRoot: TreeNode) -> boolean",
     example: {
@@ -717,7 +724,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n·m) worst case",
     pitfall: "A subtree must match from that node all the way down — a partial match does not count.",
   },
-  52: {
+  "lowest-common-ancestor-of-a-binary-search-tree": {
     task: "Lowest common ancestor of two nodes in a binary search tree.",
     signature: "lowestCommonAncestor(root: TreeNode, p: TreeNode, q: TreeNode) -> TreeNode",
     example: {
@@ -730,7 +737,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(h) time, O(1) space iteratively",
     pitfall: "A node can be its own ancestor; stop as soon as the values straddle the current node.",
   },
-  53: {
+  "binary-tree-level-order-traversal": {
     task: "Return node values grouped level by level, top to bottom.",
     signature: "levelOrder(root: TreeNode) -> int[][]",
     example: { input: "root = [3, 9, 20]", output: "[[3], [9, 20]]", why: "Each inner list is one depth level." },
@@ -739,7 +746,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(n) space",
     pitfall: "Snapshot the queue size before the inner loop — it grows as you enqueue children.",
   },
-  54: {
+  "binary-tree-right-side-view": {
     task: "Values visible when viewing the tree from the right-hand side.",
     signature: "rightSideView(root: TreeNode) -> int[]",
     example: {
@@ -752,7 +759,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(n) space",
     pitfall: "Take the last node per level, not the rightmost root-to-leaf path.",
   },
-  55: {
+  "count-good-nodes-in-binary-tree": {
     task: "Count nodes with no larger value anywhere on the path from the root.",
     signature: "goodNodes(root: TreeNode) -> int",
     example: {
@@ -765,7 +772,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(h) space",
     pitfall: "The root always counts. Seed the maximum with the root's value or negative infinity.",
   },
-  56: {
+  "validate-binary-search-tree": {
     task: "Validate that a binary tree satisfies the BST property.",
     signature: "isValidBST(root: TreeNode) -> boolean",
     example: {
@@ -778,7 +785,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(h) space",
     pitfall: "Comparing only against immediate children passes invalid trees — the constraint is global.",
   },
-  57: {
+  "kth-smallest-element-in-a-bst": {
     task: "Kth smallest value in a binary search tree.",
     signature: "kthSmallest(root: TreeNode, k: int) -> int",
     example: { input: "root = [3, 1, 4], k = 2", output: "3", why: "In-order the values are 1, 3, 4; the 2nd is 3." },
@@ -787,7 +794,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(h + k) time, O(h) space",
     pitfall: "An iterative stack lets you stop early; full recursion visits everything.",
   },
-  58: {
+  "construct-binary-tree-from-preorder-and-inorder-traversal": {
     task: "Rebuild a binary tree from its preorder and inorder traversals.",
     signature: "buildTree(preorder: int[], inorder: int[]) -> TreeNode",
     example: {
@@ -800,7 +807,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) with an index map, O(n) space",
     pitfall: "Scanning inorder for the root each call makes it O(n²) — precompute value → index.",
   },
-  59: {
+  "binary-tree-maximum-path-sum": {
     task: "Maximum path sum between any two nodes.",
     signature: "maxPathSum(root: TreeNode) -> int",
     example: {
@@ -814,7 +821,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(h) space",
     pitfall: "Clamp negative branch sums to 0 — a harmful branch is simply not taken.",
   },
-  60: {
+  "serialize-and-deserialize-binary-tree": {
     task: "Serialise a binary tree to a string and reconstruct it exactly.",
     signature: "serialize(root) -> string  /  deserialize(s: string) -> TreeNode",
     example: {
@@ -829,7 +836,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Tries ────────────────────────────────────────────────────────────── */
-  61: {
+  "implement-trie-prefix-tree": {
     task: "Implement a prefix tree supporting insert, search and startsWith.",
     signature: "Trie: insert(word)  /  search(word) -> boolean  /  startsWith(prefix) -> boolean",
     example: {
@@ -842,7 +849,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(k) per operation for word length k",
     pitfall: "search requires the end-of-word flag; startsWith only requires the path to exist.",
   },
-  62: {
+  "design-add-and-search-words-data-structure": {
     task: "Trie where search supports '.' as a single-character wildcard.",
     signature: "WordDictionary: addWord(word)  /  search(pattern) -> boolean",
     example: {
@@ -855,7 +862,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(k) typical, O(26^k) worst case with many dots",
     pitfall: "Any branch returning true short-circuits the whole search.",
   },
-  63: {
+  "word-search-ii": {
     task: "Find every dictionary word present as a path of adjacent cells in a grid.",
     signature: "findWords(board: char[][], words: string[]) -> string[]",
     example: {
@@ -874,7 +881,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Heap / Priority Queue ────────────────────────────────────────────── */
-  64: {
+  "kth-largest-element-in-a-stream": {
     task: "Stream of numbers; report the kth largest seen so far after each addition.",
     signature: "KthLargest(k, nums): add(val) -> int",
     example: {
@@ -887,7 +894,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(log k) per add",
     pitfall: "Min-heap for kth *largest* feels inverted; keeping the k biggest is the point.",
   },
-  65: {
+  "last-stone-weight": {
     task: "Repeatedly smash the two heaviest stones; return the weight of what remains.",
     signature: "lastStoneWeight(stones: int[]) -> int",
     example: {
@@ -900,7 +907,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n log n) time, O(n) space",
     pitfall: "Languages with only a min-heap need negated values.",
   },
-  66: {
+  "k-closest-points-to-origin": {
     task: "Return the k points closest to the origin.",
     signature: "kClosest(points: int[][], k: int) -> int[][]",
     example: {
@@ -913,7 +920,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n log k) with a bounded heap",
     pitfall: "Quickselect gives O(n) average if asked to beat the heap.",
   },
-  67: {
+  "kth-largest-element-in-an-array": {
     task: "Kth largest element in an unsorted array.",
     signature: "findKthLargest(nums: int[], k: int) -> int",
     example: {
@@ -926,7 +933,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) average, O(n²) worst; heap gives guaranteed O(n log k)",
     pitfall: "Convert kth largest to a 0-based index carefully: n − k.",
   },
-  68: {
+  "task-scheduler": {
     task: "Minimum time units to run all tasks with a cooldown between identical ones.",
     signature: "leastInterval(tasks: char[], n: int) -> int",
     example: {
@@ -940,7 +947,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "The answer is never less than the total task count — take the max of the two.",
   },
-  69: {
+  "design-twitter": {
     task: "Mini Twitter: post, follow, unfollow, and a feed of the 10 most recent tweets.",
     signature: "Twitter: postTweet(userId, tweetId)  /  getNewsFeed(userId) -> int[]  /  follow(a, b)  /  unfollow(a, b)",
     example: {
@@ -954,7 +961,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(f log f) per feed for f followees",
     pitfall: "A user follows themselves implicitly — their own tweets must appear.",
   },
-  70: {
+  "find-median-from-data-stream": {
     task: "Report the median of a growing stream of numbers.",
     signature: "MedianFinder: addNum(num)  /  findMedian() -> double",
     example: {
@@ -969,7 +976,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Backtracking ─────────────────────────────────────────────────────── */
-  71: {
+  "subsets": {
     task: "Produce every subset of an array of distinct integers.",
     signature: "subsets(nums: int[]) -> int[][]",
     example: { input: "nums = [1, 2]", output: "[[], [1], [2], [1, 2]]", why: "2ⁿ subsets for n distinct elements." },
@@ -978,7 +985,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n·2ⁿ)",
     pitfall: "Copy the running list when recording a result — it is mutated on the way back up.",
   },
-  72: {
+  "combination-sum": {
     task: "Find all combinations summing to a target; each candidate may be reused.",
     signature: "combinationSum(candidates: int[], target: int) -> int[][]",
     example: {
@@ -991,7 +998,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "Exponential in target / minimum candidate",
     pitfall: "Advancing the index after choosing forbids reuse — that is the sibling problem.",
   },
-  73: {
+  "combination-sum-ii": {
     task: "Combinations summing to a target, each element used once, with no duplicate combinations.",
     signature: "combinationSum2(candidates: int[], target: int) -> int[][]",
     example: {
@@ -1004,7 +1011,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(2ⁿ)",
     pitfall: "The skip applies to siblings only — a duplicate deeper in the path is legitimate.",
   },
-  74: {
+  "permutations": {
     task: "Produce all permutations of distinct integers.",
     signature: "permute(nums: int[]) -> int[][]",
     example: { input: "nums = [1, 2, 3]", output: "6 arrays, from [1,2,3] to [3,2,1]", why: "n! orderings of n distinct values." },
@@ -1013,7 +1020,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n·n!)",
     pitfall: "Undo the choice after recursing — the missing un-mark is the classic bug.",
   },
-  75: {
+  "subsets-ii": {
     task: "All unique subsets when the input contains duplicates.",
     signature: "subsetsWithDup(nums: int[]) -> int[][]",
     example: {
@@ -1026,7 +1033,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n·2ⁿ)",
     pitfall: "Deduping the final list with a set works but misses the point of the exercise.",
   },
-  76: {
+  "word-search": {
     task: "Does a word exist as a path of horizontally or vertically adjacent cells?",
     signature: "exist(board: char[][], word: string) -> boolean",
     example: {
@@ -1039,7 +1046,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n·4^L)",
     pitfall: "Restore the cell on the way out, or later branches see a corrupted board.",
   },
-  77: {
+  "palindrome-partitioning": {
     task: "All ways to partition a string so every part is a palindrome.",
     signature: "partition(s: string) -> string[][]",
     example: {
@@ -1052,7 +1059,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n·2ⁿ)",
     pitfall: "Precomputing palindrome checks with DP avoids re-verifying the same substrings repeatedly.",
   },
-  78: {
+  "letter-combinations-of-a-phone-number": {
     task: "All letter combinations a phone-keypad digit string could spell.",
     signature: "letterCombinations(digits: string) -> string[]",
     example: {
@@ -1065,7 +1072,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(4ⁿ)",
     pitfall: "Empty input returns an empty list, not a list containing an empty string.",
   },
-  79: {
+  "n-queens": {
     task: "Place n queens on an n×n board so none attack another.",
     signature: "solveNQueens(n: int) -> string[][]",
     example: { input: "n = 4", output: "2 distinct board configurations", why: "Only two arrangements avoid all mutual attacks." },
@@ -1076,7 +1083,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Graphs ───────────────────────────────────────────────────────────── */
-  80: {
+  "number-of-islands": {
     task: "Count connected landmasses in a grid of land and water.",
     signature: "numIslands(grid: char[][]) -> int",
     example: {
@@ -1089,7 +1096,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n) time, O(m·n) space",
     pitfall: "Mark visited when enqueueing, not when dequeuing, or cells are processed twice.",
   },
-  81: {
+  "clone-graph": {
     task: "Deep-copy a connected undirected graph.",
     signature: "cloneGraph(node: Node) -> Node",
     example: {
@@ -1102,7 +1109,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(V + E)",
     pitfall: "Check the map before recursing — a cycle otherwise loops forever.",
   },
-  82: {
+  "max-area-of-island": {
     task: "Size of the largest connected landmass.",
     signature: "maxAreaOfIsland(grid: int[][]) -> int",
     example: { input: "grid = [[1,1],[0,1]]", output: "3", why: "Three connected land cells form one island." },
@@ -1111,7 +1118,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n)",
     pitfall: "Area is 1 + the sum of the four recursive calls, and 0 for water.",
   },
-  83: {
+  "pacific-atlantic-water-flow": {
     task: "Find cells from which water can flow to both the Pacific and Atlantic oceans.",
     signature: "pacificAtlantic(heights: int[][]) -> int[][]",
     example: {
@@ -1129,7 +1136,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n)",
     pitfall: "Searching outward from every cell is O((m·n)²). The reversal is the whole trick.",
   },
-  84: {
+  "surrounded-regions": {
     task: "Capture every region of 'O' that is fully surrounded by 'X'.",
     signature: "solve(board: char[][]) -> void",
     example: {
@@ -1142,7 +1149,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n)",
     pitfall: "Work border-inward; deciding per-region whether it touched an edge is far messier.",
   },
-  85: {
+  "rotting-oranges": {
     task: "Minutes until every fresh orange rots, or −1 if some never will.",
     signature: "orangesRotting(grid: int[][]) -> int",
     example: {
@@ -1155,7 +1162,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n)",
     pitfall: "Count fresh oranges up front so you can detect unreachable ones at the end.",
   },
-  86: {
+  "walls-and-gates": {
     task: "Fill each empty room with its distance to the nearest gate.",
     signature: "wallsAndGates(rooms: int[][]) -> void",
     example: {
@@ -1168,7 +1175,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n)",
     pitfall: "BFS from each empty room instead is O((m·n)²).",
   },
-  87: {
+  "course-schedule": {
     task: "Can all courses be finished given prerequisite pairs?",
     signature: "canFinish(numCourses: int, prerequisites: int[][]) -> boolean",
     example: {
@@ -1182,7 +1189,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(V + E)",
     pitfall: "Distinguish 'currently on the stack' from 'fully explored' — only the former indicates a cycle.",
   },
-  88: {
+  "course-schedule-ii": {
     task: "Return a valid order in which to take all courses.",
     signature: "findOrder(numCourses: int, prerequisites: int[][]) -> int[]",
     example: {
@@ -1195,7 +1202,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(V + E)",
     pitfall: "If the output is shorter than the course count, a cycle exists — return empty.",
   },
-  89: {
+  "graph-valid-tree": {
     task: "Do the given edges form a valid tree?",
     signature: "validTree(n: int, edges: int[][]) -> boolean",
     example: {
@@ -1208,7 +1215,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(V + E)",
     pitfall: "The edge count alone is insufficient — a cycle plus a detached node satisfies it.",
   },
-  90: {
+  "number-of-connected-components-in-an-undirected-graph": {
     task: "Count connected components in an undirected graph.",
     signature: "countComponents(n: int, edges: int[][]) -> int",
     example: {
@@ -1221,7 +1228,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(E·α(n)) — effectively linear",
     pitfall: "Only decrement when the two roots actually differ.",
   },
-  91: {
+  "redundant-connection": {
     task: "Find the edge that turns a tree into a graph containing exactly one cycle.",
     signature: "findRedundantConnection(edges: int[][]) -> int[]",
     example: {
@@ -1234,7 +1241,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(E·α(n))",
     pitfall: "The problem wants the *last* such edge in input order; process forwards and keep the latest.",
   },
-  92: {
+  "word-ladder": {
     task: "Length of the shortest transformation sequence between two words, changing one letter at a time.",
     signature: "ladderLength(beginWord: string, endWord: string, wordList: string[]) -> int",
     example: {
@@ -1254,7 +1261,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Advanced Graphs ──────────────────────────────────────────────────── */
-  93: {
+  "reconstruct-itinerary": {
     task: "Reconstruct an itinerary using every ticket exactly once, lexicographically smallest.",
     signature: "findItinerary(tickets: string[][]) -> string[]",
     example: {
@@ -1268,7 +1275,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(E log E) for the sorting",
     pitfall: "Append to the result *after* exhausting a node's edges, then reverse at the end.",
   },
-  94: {
+  "min-cost-to-connect-all-points": {
     task: "Minimum cost to connect all points, where cost is Manhattan distance.",
     signature: "minCostConnectPoints(points: int[][]) -> int",
     example: {
@@ -1281,7 +1288,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n² log n) with a heap",
     pitfall: "Every pair is an edge — do not materialise all n² of them if you can avoid it.",
   },
-  95: {
+  "network-delay-time": {
     task: "Time for a signal to reach every node from a source.",
     signature: "networkDelayTime(times: int[][], n: int, k: int) -> int",
     example: {
@@ -1294,7 +1301,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(E log V)",
     pitfall: "Any unreachable node means −1 — check coverage before taking the maximum.",
   },
-  96: {
+  "swim-in-rising-water": {
     task: "Least time until a path exists from the top-left to the bottom-right as water rises.",
     signature: "swimInWater(grid: int[][]) -> int",
     example: {
@@ -1307,7 +1314,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n² log n)",
     pitfall: "Relax with max(currentCost, cellHeight), not a running sum.",
   },
-  97: {
+  "alien-dictionary": {
     task: "Derive the letter order of an alien alphabet from a sorted word list.",
     signature: "alienOrder(words: string[]) -> string",
     example: {
@@ -1324,7 +1331,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(total characters)",
     pitfall: "A longer word preceding its own prefix is invalid input — detect it explicitly.",
   },
-  98: {
+  "cheapest-flights-within-k-stops": {
     task: "Cheapest flight from source to destination using at most k stops.",
     signature: "findCheapestPrice(n: int, flights: int[][], src: int, dst: int, k: int) -> int",
     example: {
@@ -1339,7 +1346,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── 1D Dynamic Programming ───────────────────────────────────────────── */
-  99: {
+  "climbing-stairs": {
     task: "Number of distinct ways to climb n stairs taking 1 or 2 steps.",
     signature: "climbStairs(n: int) -> int",
     example: { input: "n = 3", output: "3", why: "1+1+1, 1+2 and 2+1." },
@@ -1348,7 +1355,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Two rolling variables suffice; the array is unnecessary.",
   },
-  100: {
+  "min-cost-climbing-stairs": {
     task: "Cheapest way to reach the top of a staircase with a cost per step.",
     signature: "minCostClimbingStairs(cost: int[]) -> int",
     example: {
@@ -1361,7 +1368,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "You may start at index 0 or 1, and the top is one past the last step.",
   },
-  101: {
+  "house-robber": {
     task: "Maximum sum of non-adjacent house values.",
     signature: "rob(nums: int[]) -> int",
     example: { input: "nums = [2, 7, 9, 3]", output: "11", why: "Rob houses 0 and 2 for 2 + 9; adjacent houses cannot both be taken." },
@@ -1370,7 +1377,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Two rolling values, not an array — and mind the update order.",
   },
-  102: {
+  "house-robber-ii": {
     task: "House robber where the houses are arranged in a circle.",
     signature: "rob(nums: int[]) -> int",
     example: {
@@ -1383,7 +1390,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "A single-house input must be handled before splitting the range.",
   },
-  103: {
+  "longest-palindromic-substring": {
     task: "Find the longest palindromic substring.",
     signature: "longestPalindrome(s: string) -> string",
     example: { input: 's = "babad"', output: '"bab" (or "aba")', why: "Both are length-3 palindromes; either is accepted." },
@@ -1392,7 +1399,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n²) time, O(1) space",
     pitfall: "Even-length palindromes need gap centres; handling only characters misses them.",
   },
-  104: {
+  "palindromic-substrings": {
     task: "Count palindromic substrings, including single characters.",
     signature: "countSubstrings(s: string) -> int",
     example: { input: 's = "aaa"', output: "6", why: "Three single characters, two 'aa's and one 'aaa'." },
@@ -1401,7 +1408,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n²) time, O(1) space",
     pitfall: "Single characters are palindromes and must be counted.",
   },
-  105: {
+  "decode-ways": {
     task: "Number of ways to decode a digit string where 1–26 map to A–Z.",
     signature: "numDecodings(s: string) -> int",
     example: { input: 's = "226"', output: "3", why: "2|2|6, 22|6 and 2|26." },
@@ -1410,7 +1417,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "'0' is never valid alone and only survives inside 10 or 20.",
   },
-  106: {
+  "coin-change": {
     task: "Fewest coins summing to an amount.",
     signature: "coinChange(coins: int[], amount: int) -> int",
     example: { input: "coins = [1, 5, 6], amount = 10", output: "2", why: "5 + 5. A greedy 6 + 1 + 1 + 1 + 1 would need five." },
@@ -1419,7 +1426,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(amount·coins) time, O(amount) space",
     pitfall: "Greedy fails on non-canonical coin systems — this must be DP.",
   },
-  107: {
+  "maximum-product-subarray": {
     task: "Maximum product of a contiguous subarray.",
     signature: "maxProduct(nums: int[]) -> int",
     example: {
@@ -1432,7 +1439,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Compute both new values from the old pair before assigning either.",
   },
-  108: {
+  "word-break": {
     task: "Can a string be segmented into a sequence of dictionary words?",
     signature: "wordBreak(s: string, wordDict: string[]) -> boolean",
     example: {
@@ -1445,7 +1452,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n²·k) time, O(n) space",
     pitfall: "dp[0] = true — the empty prefix is always segmentable.",
   },
-  109: {
+  "longest-increasing-subsequence": {
     task: "Length of the longest strictly increasing subsequence.",
     signature: "lengthOfLIS(nums: int[]) -> int",
     example: {
@@ -1458,7 +1465,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n log n) time, O(n) space",
     pitfall: "The tails array built by the fast version is not itself a valid subsequence — only its length is meaningful.",
   },
-  110: {
+  "partition-equal-subset-sum": {
     task: "Can the array be split into two subsets with equal sums?",
     signature: "canPartition(nums: int[]) -> boolean",
     example: { input: "nums = [1, 5, 11, 5]", output: "true", why: "[11] and [1, 5, 5] both sum to 11." },
@@ -1469,7 +1476,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── 2D Dynamic Programming ───────────────────────────────────────────── */
-  111: {
+  "unique-paths": {
     task: "Count paths across a grid moving only right or down.",
     signature: "uniquePaths(m: int, n: int) -> int",
     example: { input: "m = 3, n = 2", output: "3", why: "Three distinct right/down sequences reach the far corner." },
@@ -1478,7 +1485,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n) time, O(n) space with one rolling row",
     pitfall: "It is also the binomial C(m+n−2, m−1) if you want O(1) space.",
   },
-  112: {
+  "longest-common-subsequence": {
     task: "Length of the longest common subsequence of two strings.",
     signature: "longestCommonSubsequence(text1: string, text2: string) -> int",
     example: { input: 'text1 = "abcde", text2 = "ace"', output: "3", why: "'ace' appears in order in both, though not contiguously." },
@@ -1488,7 +1495,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n) time, O(min(m, n)) space",
     pitfall: "Subsequence, not substring — the characters need not be contiguous.",
   },
-  113: {
+  "best-time-to-buy-and-sell-stock-with-cooldown": {
     task: "Maximum stock profit with unlimited trades and a one-day cooldown after selling.",
     signature: "maxProfit(prices: int[]) -> int",
     example: {
@@ -1501,7 +1508,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "The cooldown forbids buying the day after a sale, not the day of it.",
   },
-  114: {
+  "coin-change-ii": {
     task: "Number of coin combinations that make an amount.",
     signature: "change(amount: int, coins: int[]) -> int",
     example: {
@@ -1514,7 +1521,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(amount·coins) time, O(amount) space",
     pitfall: "Looping amount outermost counts permutations instead — a different problem.",
   },
-  115: {
+  "target-sum": {
     task: "Count ways to assign + and − to every number so the expression equals a target.",
     signature: "findTargetSumWays(nums: int[], target: int) -> int",
     example: {
@@ -1527,7 +1534,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n·sum) time",
     pitfall: "Impossible when (total + target) is odd or negative — check before the DP.",
   },
-  116: {
+  "interleaving-string": {
     task: "Can s3 be formed by interleaving s1 and s2 while preserving each one's order?",
     signature: "isInterleave(s1: string, s2: string, s3: string) -> boolean",
     example: {
@@ -1540,7 +1547,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n) time, O(n) space",
     pitfall: "Length mismatch is an immediate false; greedy matching is wrong.",
   },
-  117: {
+  "longest-increasing-path-in-a-matrix": {
     task: "Length of the longest strictly increasing path in a matrix.",
     signature: "longestIncreasingPath(matrix: int[][]) -> int",
     example: { input: "matrix = [[1, 2], [4, 3]]", output: "4", why: "1 → 2 → 3 → 4 walks 4-directionally, always increasing." },
@@ -1549,7 +1556,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n) time and space",
     pitfall: "Without memoisation this is exponential — the cache is the solution.",
   },
-  118: {
+  "distinct-subsequences": {
     task: "Count distinct subsequences of s that equal t.",
     signature: "numDistinct(s: string, t: string) -> int",
     example: { input: 's = "bbb", t = "bb"', output: "3", why: "Any 2 of the 3 b's form the target." },
@@ -1558,7 +1565,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n) time, O(n) space",
     pitfall: "An empty t has exactly one match from any prefix — seed that row to 1.",
   },
-  119: {
+  "edit-distance": {
     task: "Minimum insert, delete or replace operations to turn one string into another.",
     signature: "minDistance(word1: string, word2: string) -> int",
     example: { input: 'word1 = "cat", word2 = "cut"', output: "1", why: "Replace the 'a' with a 'u'." },
@@ -1567,7 +1574,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n) time, O(n) space",
     pitfall: "Seed the first row and column to their indices — converting to or from empty costs one op per character.",
   },
-  120: {
+  "burst-balloons": {
     task: "Maximum coins collected by bursting balloons in an optimal order.",
     signature: "maxCoins(nums: int[]) -> int",
     example: {
@@ -1581,7 +1588,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n³) time, O(n²) space",
     pitfall: "Thinking forwards fails — the neighbours keep changing. Pad the array with 1s at both ends.",
   },
-  121: {
+  "regular-expression-matching": {
     task: "Regular-expression matching supporting '.' and '*'.",
     signature: "isMatch(s: string, p: string) -> boolean",
     example: {
@@ -1596,7 +1603,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Greedy ───────────────────────────────────────────────────────────── */
-  122: {
+  "maximum-subarray": {
     task: "Largest sum of a contiguous subarray.",
     signature: "maxSubArray(nums: int[]) -> int",
     example: { input: "nums = [-2, 4, -1, 3]", output: "6", why: "The subarray [4, −1, 3] sums to 6." },
@@ -1605,7 +1612,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "An all-negative array should return the largest single element, not 0.",
   },
-  123: {
+  "jump-game": {
     task: "Can you reach the last index, given a maximum jump length at each position?",
     signature: "canJump(nums: int[]) -> boolean",
     example: { input: "nums = [3, 2, 1, 0, 4]", output: "false", why: "Every route stalls on the 0 at index 3." },
@@ -1614,7 +1621,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Walking backwards from the goal is equally valid and sometimes clearer.",
   },
-  124: {
+  "jump-game-ii": {
     task: "Fewest jumps needed to reach the last index.",
     signature: "jump(nums: int[]) -> int",
     example: { input: "nums = [2, 3, 1, 1, 4]", output: "2", why: "Jump 1 step to index 1, then 3 steps to the end." },
@@ -1623,7 +1630,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Increment the jump count when you exhaust the current level's window, not on every step.",
   },
-  125: {
+  "gas-station": {
     task: "Find the circular starting station from which the whole loop can be completed.",
     signature: "canCompleteCircuit(gas: int[], cost: int[]) -> int",
     example: {
@@ -1637,7 +1644,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Reset the tank *and* move the candidate start together — only one of the two is not enough.",
   },
-  126: {
+  "hand-of-straights": {
     task: "Can a hand of cards be split entirely into consecutive groups of a given size?",
     signature: "isNStraightHand(hand: int[], groupSize: int) -> boolean",
     example: {
@@ -1650,7 +1657,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n log n) time",
     pitfall: "Decrement counts as you consume cards, and fail immediately if a needed card is missing.",
   },
-  127: {
+  "merge-triplets-to-form-target-triplet": {
     task: "Can chosen triplets be combined by element-wise max to form a target triplet?",
     signature: "mergeTriplets(triplets: int[][], target: int[]) -> boolean",
     example: {
@@ -1663,7 +1670,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "A single oversized component disqualifies the whole triplet.",
   },
-  128: {
+  "partition-labels": {
     task: "Split a string so each letter appears in at most one part, maximising the number of parts.",
     signature: "partitionLabels(s: string) -> int[]",
     example: {
@@ -1677,7 +1684,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "The boundary is the running maximum of last-indices, not the current letter's own.",
   },
-  129: {
+  "valid-parenthesis-string": {
     task: "Validate parentheses where '*' may act as '(', ')' or an empty string.",
     signature: "checkValidString(s: string) -> boolean",
     example: { input: 's = "(*)"', output: "true", why: "The star can be treated as empty, leaving a matched pair." },
@@ -1688,7 +1695,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Intervals ────────────────────────────────────────────────────────── */
-  130: {
+  "insert-interval": {
     task: "Insert an interval into a sorted non-overlapping list, merging where needed.",
     signature: "insert(intervals: int[][], newInterval: int[]) -> int[][]",
     example: {
@@ -1701,7 +1708,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time",
     pitfall: "Touching endpoints count as overlapping — use ≤ rather than <.",
   },
-  131: {
+  "merge-intervals": {
     task: "Merge all overlapping intervals.",
     signature: "merge(intervals: int[][]) -> int[][]",
     example: {
@@ -1714,7 +1721,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n log n) time",
     pitfall: "Extend with max(end, next.end) — a fully contained interval must not shrink it.",
   },
-  132: {
+  "non-overlapping-intervals": {
     task: "Fewest intervals to remove so that none overlap.",
     signature: "eraseOverlapIntervals(intervals: int[][]) -> int",
     example: { input: "intervals = [[1,2],[1,3],[2,3]]", output: "1", why: "Removing [1,3] leaves two non-overlapping intervals." },
@@ -1723,7 +1730,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n log n) time",
     pitfall: "Sorting by start needs an extra rule for which of two overlapping intervals to drop.",
   },
-  133: {
+  "meeting-rooms": {
     task: "Can a person attend every meeting?",
     signature: "canAttendMeetings(intervals: int[][]) -> boolean",
     example: { input: "intervals = [[0,30],[5,10]]", output: "false", why: "The second meeting begins before the first ends." },
@@ -1732,7 +1739,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n log n) time",
     pitfall: "A meeting ending exactly when the next begins is not a conflict.",
   },
-  134: {
+  "meeting-rooms-ii": {
     task: "Minimum number of meeting rooms required.",
     signature: "minMeetingRooms(intervals: int[][]) -> int",
     example: { input: "intervals = [[0,30],[5,10],[15,20]]", output: "2", why: "The 5–10 and 15–20 meetings can share a room; the 0–30 needs its own." },
@@ -1741,7 +1748,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n log n) time",
     pitfall: "Separately sorted start and end arrays with two pointers is the equivalent O(n log n) alternative.",
   },
-  135: {
+  "minimum-interval-to-include-each-query": {
     task: "For each query, the size of the smallest interval containing it.",
     signature: "minInterval(intervals: int[][], queries: int[]) -> int[]",
     example: {
@@ -1756,7 +1763,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Math & Geometry ──────────────────────────────────────────────────── */
-  136: {
+  "rotate-image": {
     task: "Rotate an n×n matrix 90° clockwise, in place.",
     signature: "rotate(matrix: int[][]) -> void",
     example: { input: "matrix = [[1,2],[3,4]]", output: "[[3,1],[4,2]]", why: "Transpose gives [[1,3],[2,4]]; reversing each row gives the result." },
@@ -1765,7 +1772,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n²) time, O(1) space",
     pitfall: "Transpose only the upper triangle — going over the whole matrix undoes the swap.",
   },
-  137: {
+  "spiral-matrix": {
     task: "Return every matrix element in spiral order.",
     signature: "spiralOrder(matrix: int[][]) -> int[]",
     example: { input: "matrix = [[1,2],[4,3]]", output: "[1, 2, 3, 4]", why: "Right along the top, down the right, then left along the bottom." },
@@ -1774,7 +1781,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n) time",
     pitfall: "Re-check the boundaries before the left and up passes, or a single remaining row is traversed twice.",
   },
-  138: {
+  "set-matrix-zeroes": {
     task: "Zero out the entire row and column of every zero, in place.",
     signature: "setZeroes(matrix: int[][]) -> void",
     example: { input: "matrix = [[1,1],[1,0]]", output: "[[1,0],[0,0]]", why: "The zero at (1,1) clears row 1 and column 1." },
@@ -1783,7 +1790,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n) time, O(1) space",
     pitfall: "Record separately whether the first row and column themselves contained a zero, and apply them last.",
   },
-  139: {
+  "happy-number": {
     task: "Does repeatedly summing the squares of a number's digits reach 1?",
     signature: "isHappy(n: int) -> boolean",
     example: { input: "n = 19", output: "true", why: "1+81=82 → 64+4=68 → 36+64=100 → 1+0+0=1." },
@@ -1792,7 +1799,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(log n) per step, bounded iterations",
     pitfall: "Without cycle detection a non-happy number loops forever.",
   },
-  140: {
+  "plus-one": {
     task: "Add one to a number represented as an array of digits.",
     signature: "plusOne(digits: int[]) -> int[]",
     example: { input: "digits = [1, 9]", output: "[2, 0]", why: "19 + 1 = 20; the 9 carries." },
@@ -1801,7 +1808,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time",
     pitfall: "All nines needs a longer array with a leading 1.",
   },
-  141: {
+  "powx-n": {
     task: "Compute x raised to the power n.",
     signature: "myPow(x: double, n: int) -> double",
     example: { input: "x = 2.0, n = -2", output: "0.25", why: "A negative exponent gives the reciprocal of 2² = 4." },
@@ -1810,7 +1817,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(log n) time",
     pitfall: "Negative n means reciprocal; watch for integer overflow when negating the minimum value.",
   },
-  142: {
+  "multiply-strings": {
     task: "Multiply two non-negative numbers given as strings.",
     signature: "multiply(num1: string, num2: string) -> string",
     example: { input: 'num1 = "12", num2 = "12"', output: '"144"', why: "Digit-by-digit multiplication with carries, no built-in big integers." },
@@ -1819,7 +1826,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(m·n) time",
     pitfall: "Strip leading zeros at the end, and return '0' rather than an empty string.",
   },
-  143: {
+  "detect-squares": {
     task: "Data structure counting axis-aligned squares that have a queried point as a corner.",
     signature: "DetectSquares: add(point: int[])  /  count(point: int[]) -> int",
     example: {
@@ -1835,7 +1842,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 
   /* ── Bit Manipulation ─────────────────────────────────────────────────── */
-  144: {
+  "single-number": {
     task: "Find the element appearing once when every other element appears twice.",
     signature: "singleNumber(nums: int[]) -> int",
     example: { input: "nums = [4, 1, 4]", output: "1", why: "The two 4s cancel under XOR, leaving 1." },
@@ -1844,7 +1851,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "Only works because every other element appears an even number of times.",
   },
-  145: {
+  "number-of-1-bits": {
     task: "Count the set bits in an unsigned integer.",
     signature: "hammingWeight(n: uint32) -> int",
     example: { input: "n = 11 (binary 1011)", output: "3", why: "Three bits are set." },
@@ -1853,7 +1860,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(number of set bits)",
     pitfall: "Shifting 32 times works but is slower and needs care with sign extension.",
   },
-  146: {
+  "counting-bits": {
     task: "Count set bits for every integer from 0 to n.",
     signature: "countBits(n: int) -> int[]",
     example: { input: "n = 4", output: "[0, 1, 1, 2, 1]", why: "Binary 0, 1, 10, 11, 100 have 0, 1, 1, 2 and 1 set bits." },
@@ -1862,7 +1869,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(n) space",
     pitfall: "Calling the single-number routine per value is O(n log n) and misses the point.",
   },
-  147: {
+  "reverse-bits": {
     task: "Reverse the bits of a 32-bit unsigned integer.",
     signature: "reverseBits(n: uint32) -> uint32",
     example: { input: "n = 1 (binary 0…01)", output: "2147483648 (binary 10…0)", why: "The single set bit moves from position 0 to position 31." },
@@ -1871,7 +1878,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(1) — fixed width",
     pitfall: "Languages without unsigned ints need a logical right shift, not arithmetic.",
   },
-  148: {
+  "missing-number": {
     task: "Find the missing value in an array containing n distinct numbers from [0, n].",
     signature: "missingNumber(nums: int[]) -> int",
     example: { input: "nums = [0, 2, 3]", output: "1", why: "The range is 0–3 and 1 is absent." },
@@ -1880,7 +1887,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(n) time, O(1) space",
     pitfall: "The Gauss sum formula also works but can overflow on large n.",
   },
-  149: {
+  "sum-of-two-integers": {
     task: "Add two integers without using + or −.",
     signature: "getSum(a: int, b: int) -> int",
     example: { input: "a = 3, b = 5", output: "8", why: "XOR gives 6 (sum without carry); the carry 2 shifts in and resolves to 8." },
@@ -1889,7 +1896,7 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
     complexity: "O(1) — bounded by word size",
     pitfall: "Negative numbers need explicit 32-bit masking in languages with arbitrary-precision ints.",
   },
-  150: {
+  "reverse-integer": {
     task: "Reverse the digits of a signed 32-bit integer, returning 0 on overflow.",
     signature: "reverse(x: int) -> int",
     example: { input: "x = -123", output: "-321", why: "The sign is preserved and the digits are reversed." },
@@ -1900,15 +1907,15 @@ const BRIEFS: Readonly<Record<number, ProblemBrief>> = {
   },
 };
 
-export function getProblemBrief(problemId: number): ProblemBrief | null {
-  return BRIEFS[problemId] ?? null;
+export function getProblemBrief(slug: string): ProblemBrief | null {
+  return BRIEFS[slug] ?? null;
 }
 
-export function hasProblemBrief(problemId: number): boolean {
-  return problemId in BRIEFS;
+export function hasProblemBrief(slug: string): boolean {
+  return slug in BRIEFS;
 }
 
 /** Exposed for the coverage test. */
-export const BRIEF_IDS: readonly number[] = Object.keys(BRIEFS).map(Number);
+export const BRIEF_SLUGS: readonly string[] = Object.keys(BRIEFS);
 
 export default BRIEFS;

@@ -3,12 +3,13 @@ import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DIFFICULTY_CONFIG } from "@/core/domain/difficulty";
-import type { Problem } from "@/core/domain/progress";
-import { getNeighbours } from "@/data/problems";
+import type { CatalogProblem } from "@/core/domain/catalog";
+import { catalog } from "@/data/catalog";
 import { cn } from "@/lib/cn";
 
 interface ProblemNavigatorProps {
-  problemId: number;
+  /** Stable identity. Navigation follows curriculum order, not this value. */
+  slug: string;
   /** When set, navigation stays inside this category. */
   category?: string;
   /** Preserved in the target URL so the scope survives navigation. */
@@ -17,10 +18,10 @@ interface ProblemNavigatorProps {
   variant?: "bar" | "cards";
 }
 
-function href(problem: Problem, scopeParam?: string): string {
+function href(problem: CatalogProblem, scopeParam?: string): string {
   return scopeParam
-    ? `/problems/${problem.id}?from=${encodeURIComponent(scopeParam)}`
-    : `/problems/${problem.id}`;
+    ? `/problems/${problem.slug}?from=${encodeURIComponent(scopeParam)}`
+    : `/problems/${problem.slug}`;
 }
 
 /**
@@ -31,15 +32,17 @@ function href(problem: Problem, scopeParam?: string): string {
  * inside the notes editor would navigate away mid-sentence.
  */
 export function ProblemNavigator({
-  problemId,
+  slug,
   category,
   scopeParam,
   variant = "cards",
 }: ProblemNavigatorProps) {
   const router = useRouter();
+  // Order comes from the catalogue, not from an array index, so a reordered
+  // list navigates correctly without this component knowing anything changed.
   const { previous, next, position, total } = useMemo(
-    () => getNeighbours(problemId, category),
-    [problemId, category]
+    () => catalog.neighbours(slug, category),
+    [slug, category]
   );
 
   useEffect(() => {
@@ -98,7 +101,7 @@ function ArrowButton({
   scopeParam,
   direction,
 }: {
-  problem: Problem | null;
+  problem: CatalogProblem | null;
   scopeParam?: string;
   direction: "previous" | "next";
 }) {
@@ -139,7 +142,7 @@ function NeighbourCard({
   scopeParam,
   direction,
 }: {
-  problem: Problem | null;
+  problem: CatalogProblem | null;
   scopeParam?: string;
   direction: "previous" | "next";
 }) {

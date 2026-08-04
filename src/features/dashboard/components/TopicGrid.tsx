@@ -2,7 +2,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { ProblemWithProgress } from "@/core/domain/progress";
-import { CATEGORIES, categoryToSlug } from "@/data/problems";
+import { categoryToSlug } from "@/data/problems";
+import { catalog } from "@/data/catalog";
 import { categoryIcon } from "@/data/categories";
 
 const COLLAPSED_COUNT = 6;
@@ -12,7 +13,7 @@ export function TopicGrid({ problems }: { problems: readonly ProblemWithProgress
 
   const topics = useMemo(() => {
     const byCategory = new Map<string, { attempted: number; total: number; due: number }>();
-    for (const category of CATEGORIES) {
+    for (const category of catalog.categories()) {
       byCategory.set(category, { attempted: 0, total: 0, due: 0 });
     }
     for (const p of problems) {
@@ -22,7 +23,7 @@ export function TopicGrid({ problems }: { problems: readonly ProblemWithProgress
       if (p.mastery !== "unseen") entry.attempted += 1;
       if (p.due) entry.due += 1;
     }
-    return CATEGORIES.map((category) => {
+    return catalog.categories().map((category) => {
       const s = byCategory.get(category)!;
       return {
         category,

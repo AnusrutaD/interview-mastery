@@ -9,6 +9,7 @@ import { DifficultyBadge, MasteryBadge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { MasterySelector } from "./MasterySelector";
 import { ReviewControls } from "@/features/items/components/ReviewControls";
+import { problemHref } from "@/data/catalog";
 
 const PAGE_SIZE = 5;
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
@@ -280,7 +281,7 @@ function ProblemRow({
                   onClick={(event) => event.stopPropagation()}
                 >
                   <Link
-                    href={`/problems/${problem.id}`}
+                    href={problemHref(problem.id) ?? "#"}
                     className="text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors"
                   >
                     Detail →

@@ -1,7 +1,7 @@
 "use client";
 import { Suspense, use, useMemo, useState } from "react";
 import Link from "next/link";
-import { notFound, useSearchParams } from "next/navigation";
+import { notFound, redirect, useSearchParams } from "next/navigation";
 import { MASTERY_CONFIG } from "@/core/domain/mastery";
 import { reviewIntervalFor } from "@/core/domain/review";
 import { formatDateWithWeekday, formatRelative, formatTime } from "@/core/time/format";
@@ -9,7 +9,8 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { DifficultyBadge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { categoryHints } from "@/data/categories";
-import { getProblemById, slugToCategory } from "@/data/problems";
+import { slugToCategory } from "@/data/problems";
+import { catalog } from "@/data/catalog";
 import { getProblemBrief } from "@/data/problemBriefs";
 import { MarkdownNote } from "@/features/notes/components/MarkdownNote";
 import { MasterySelector } from "@/features/problems/components/MasterySelector";
@@ -21,17 +22,29 @@ import { useProblemSession } from "@/features/progress/hooks/useProblemSession";
 import { SolveTimer } from "@/features/timer/components/SolveTimer";
 import { cn } from "@/lib/cn";
 
-export default function ProblemDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const problem = getProblemById(Number.parseInt(id, 10));
-  if (!problem) notFound();
+export default function ProblemDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
 
-  const session = useProblemSession(problem.id);
+  // `/problems/12` was the address before slugs became identity, and those URLs
+  // are in bookmarks, browser history and anything shared out of the app. A
+  // numeric segment is therefore treated as a legacy id and redirected to the
+  // canonical address rather than 404ing a link that worked yesterday.
+  const problem = catalog.bySlug(slug);
+  if (!problem) {
+    const legacy = /^\d+$/.test(slug) ? catalog.byLegacyId(Number.parseInt(slug, 10)) : null;
+    if (legacy) redirect(`/problems/${legacy.slug}`);
+    notFound();
+  }
+
+  // Progress is still stored against the legacy integer id. That storage moves
+  // when /dsa reads collection items; until then the slug is the address and
+  // the legacy id is the key, which is exactly what `legacyId` is for.
+  const session = useProblemSession(problem.legacyId ?? 0);
   const { record, loading, saving, error, isAuthenticated, due, reviewStatus, lastSession, timer } =
     session;
 
   const hints = useMemo(() => categoryHints(problem.category), [problem.category]);
-  const brief = useMemo(() => getProblemBrief(problem.id), [problem.id]);
+  const brief = useMemo(() => getProblemBrief(problem.slug), [problem.slug]);
   const interval = reviewIntervalFor(record.mastery);
   const masteryCfg = MASTERY_CONFIG[record.mastery];
 
@@ -43,7 +56,7 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
         </Suspense>
 
         <Suspense fallback={null}>
-          <ScopedNavigator problemId={problem.id} variant="bar" />
+          <ScopedNavigator slug={problem.slug} variant="bar" />
         </Suspense>
 
         {error && (
@@ -60,7 +73,7 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
-                  #{problem.id}
+                  #{problem.legacyId ?? ""}
                 </span>
                 <DifficultyBadge difficulty={problem.difficulty} />
                 <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">
@@ -217,7 +230,7 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
         />
 
         <Suspense fallback={null}>
-          <ScopedNavigator problemId={problem.id} variant="cards" />
+          <ScopedNavigator slug={problem.slug} variant="cards" />
         </Suspense>
 
         <p className="text-[10px] text-gray-300 dark:text-gray-700 text-center mt-3">
@@ -242,16 +255,16 @@ function useScope() {
 }
 
 function ScopedNavigator({
-  problemId,
+  slug: problemSlug,
   variant,
 }: {
-  problemId: number;
+  slug: string;
   variant: "bar" | "cards";
 }) {
   const { slug, category } = useScope();
   return (
     <ProblemNavigator
-      problemId={problemId}
+      slug={problemSlug}
       category={category}
       scopeParam={slug}
       variant={variant}

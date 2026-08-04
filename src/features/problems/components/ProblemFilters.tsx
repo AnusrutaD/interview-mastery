@@ -1,7 +1,7 @@
 "use client";
 import { DIFFICULTIES, type Difficulty } from "@/core/domain/difficulty";
 import { MASTERY_CONFIG, MASTERY_LEVELS, type MasteryLevel } from "@/core/domain/mastery";
-import { CATEGORIES } from "@/data/problems";
+import { catalog } from "@/data/catalog";
 import { cn } from "@/lib/cn";
 
 /** "All" is a UI-only sentinel; the domain types stay clean. */
@@ -54,7 +54,7 @@ export function ProblemFilters({
         className={cn("flex-1 min-w-40", inputCls)}
       >
         <option value={ALL}>All categories</option>
-        {CATEGORIES.map((c) => (
+        {catalog.categories().map((c) => (
           <option key={c} value={c}>{c}</option>
         ))}
       </select>
