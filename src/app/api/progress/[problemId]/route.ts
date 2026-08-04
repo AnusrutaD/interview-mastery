@@ -1,4 +1,4 @@
-import { getProgress } from "@/server/services/progress.service";
+import { getProgress } from "@/server/services/dsaProgress.service";
 import { ApiError, preflight, withAuth } from "@/server/http/handler";
 import { EMPTY_PROGRESS } from "@/core/domain/progress";
 import { getProblemById } from "@/data/problems";

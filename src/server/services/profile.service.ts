@@ -6,7 +6,7 @@ import { isISTToday } from "@/core/time/ist";
 import { PROBLEMS } from "@/data/problems";
 import { getAllStudyItems } from "../content/studyContent";
 import { prisma } from "../db/prisma";
-import { listProgress } from "./progress.service";
+import { listProgress } from "./dsaProgress.service";
 import { listStudyProgress } from "./study.service";
 
 export interface CategoryBreakdown {

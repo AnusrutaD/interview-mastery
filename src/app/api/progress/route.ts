@@ -1,4 +1,7 @@
-import { listProgress, upsertProgress } from "@/server/services/progress.service";
+// Reads and writes the DSA track through the collection model. `Progress` is
+// left frozen as a backup; reverting this import restores the old behaviour
+// exactly, with no data to restore. See dsaProgress.service.ts.
+import { listProgress, upsertProgress } from "@/server/services/dsaProgress.service";
 import { parseBody, preflight, withAuth } from "@/server/http/handler";
 import {
   progressQuerySchema,
