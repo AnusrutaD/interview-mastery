@@ -366,6 +366,10 @@ export async function upsertItemProgress(
         mastery: input.mastery,
         repeatCount: { increment: 1 },
         lastPracticedAt: now,
+        // Solving satisfies a manual review request. Clearing it here rather
+        // than relying on the timestamp comparison keeps a stale flag from
+        // outliving the review that answered it.
+        flaggedForReviewAt: null,
       }),
       ...(input.notes !== undefined && { notes: input.notes }),
       ...(input.companies !== undefined && { companies: input.companies }),
@@ -381,6 +385,67 @@ export async function upsertItemProgress(
       totalTimeSeconds: seconds,
       lastPracticedAt: isPractice ? now : null,
     },
+  });
+
+  return toItemRecord(row);
+}
+
+/* ── Revisions ────────────────────────────────────────────────────────────── */
+
+/**
+ * Record a revision: the item was gone back over without being re-solved.
+ *
+ * Deliberately does NOT touch `mastery` or `repeatCount`. Reading your notes is
+ * not evidence that your grasp changed, and letting it bump the solve counters
+ * would make the two metrics indistinguishable — which is the whole reason
+ * revisions are tracked separately.
+ *
+ * It does push the review schedule out, because reviewing is exactly what the
+ * schedule is asking for.
+ */
+export async function reviseItem(userId: string, itemId: string): Promise<ItemRecord> {
+  await requireOwnedItem(userId, itemId);
+
+  const row = await prisma.itemProgress.upsert({
+    where: { userId_itemId: { userId, itemId } },
+    update: {
+      revisionCount: { increment: 1 },
+      lastRevisedAt: new Date(),
+      flaggedForReviewAt: null,
+    },
+    create: {
+      userId,
+      itemId,
+      // An item revised before it was ever solved stays `unseen`: revising is
+      // not a claim about mastery, and inventing one here would corrupt both
+      // the dashboard counts and the review schedule.
+      mastery: "unseen",
+      revisionCount: 1,
+      lastRevisedAt: new Date(),
+    },
+  });
+
+  return toItemRecord(row);
+}
+
+/**
+ * Flag an item for review, or clear the flag.
+ *
+ * Flagging stamps `flaggedForReviewAt`, which outranks the schedule until the
+ * next practice or revision clears it.
+ */
+export async function setItemReviewFlag(
+  userId: string,
+  itemId: string,
+  flagged: boolean
+): Promise<ItemRecord> {
+  await requireOwnedItem(userId, itemId);
+  const flaggedForReviewAt = flagged ? new Date() : null;
+
+  const row = await prisma.itemProgress.upsert({
+    where: { userId_itemId: { userId, itemId } },
+    update: { flaggedForReviewAt },
+    create: { userId, itemId, mastery: "unseen", flaggedForReviewAt },
   });
 
   return toItemRecord(row);

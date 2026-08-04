@@ -18,6 +18,8 @@ import {
   importText as importTextRequest,
   importPlaylist as importPlaylistRequest,
   saveItemProgress,
+  reviseItem as reviseItemRequest,
+  flagItemForReview,
   updateCollection,
   deleteItem as deleteItemRequest,
   type ImportResponse,
@@ -39,6 +41,10 @@ export interface UseCollectionResult {
   /** Pass null to clear the target entirely. */
   setTarget: (target: Target | null) => Promise<void>;
   setMastery: (itemId: string, mastery: MasteryLevel) => Promise<void>;
+  /** Clear a due item by reviewing it, without touching mastery. */
+  revise: (itemId: string) => Promise<void>;
+  /** Force an item due, or clear that request. */
+  setReviewFlag: (itemId: string, flagged: boolean) => Promise<void>;
   setNotes: (itemId: string, notes: string) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
   importText: (text: string) => Promise<ImportResponse>;
@@ -115,6 +121,45 @@ export function useCollection(collectionId: string): UseCollectionResult {
     },
     [progress]
   );
+
+  const revise = useCallback(async (itemId: string) => {
+    // Optimistic: clearing a due queue should feel immediate, and the server
+    // owns the counters so a refetch is not needed to be correct.
+    setProgress((current) => ({
+      ...current,
+      [itemId]: {
+        ...(current[itemId] ?? EMPTY_ITEM_RECORD),
+        revisionCount: (current[itemId]?.revisionCount ?? 0) + 1,
+        lastRevisedAt: new Date().toISOString(),
+        flaggedForReviewAt: null,
+      },
+    }));
+
+    setSaving(true);
+    try {
+      const saved = await reviseItemRequest(itemId);
+      setProgress((current) => ({ ...current, [itemId]: saved }));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not record revision");
+      refresh();
+    } finally {
+      setSaving(false);
+    }
+  }, [refresh]);
+
+  const setReviewFlag = useCallback(async (itemId: string, flagged: boolean) => {
+    setSaving(true);
+    try {
+      const saved = await flagItemForReview(itemId, flagged);
+      setProgress((current) => ({ ...current, [itemId]: saved }));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update review flag");
+    } finally {
+      setSaving(false);
+    }
+  }, []);
 
   const setNotes = useCallback(async (itemId: string, notes: string) => {
     setSaving(true);
@@ -224,6 +269,8 @@ export function useCollection(collectionId: string): UseCollectionResult {
     refresh,
     setTarget,
     setMastery,
+    revise,
+    setReviewFlag,
     setNotes,
     removeItem,
     importText,

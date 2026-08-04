@@ -18,6 +18,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Spinner } from "@/components/ui/Spinner";
 import { ItemFilters } from "@/features/items/components/ItemFilters";
 import { ItemTable } from "@/features/items/components/ItemTable";
+import { RevisionMode } from "@/features/items/components/RevisionMode";
 import { useCollection } from "@/features/collections/hooks/useCollection";
 import { ImportPanel } from "@/features/collections/components/ImportPanel";
 import { TargetBar, TargetEditor } from "@/features/collections/components/TargetEditor";
@@ -30,6 +31,7 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
   const { collection, items, stats, targetProgress, nextItem, loading, saving, error } = session;
 
   const [showImport, setShowImport] = useState(false);
+  const [revising, setRevising] = useState(false);
   const [filters, setFilters] = useState<ItemFilterState>(DEFAULT_ITEM_FILTERS);
 
   // Facets come from the items themselves, so a playlist and a problem set get
@@ -169,17 +171,38 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
           </Card>
         )}
 
+        {revising ? (
+          <RevisionMode
+            items={items}
+            onRevise={(itemId) => void session.revise(itemId)}
+            onToggleFlag={(itemId, flagged) => void session.setReviewFlag(itemId, flagged)}
+            onExit={() => setRevising(false)}
+            disabled={saving}
+          />
+        ) : (
+        <>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
             Items
           </h2>
-          <button
-            type="button"
-            onClick={() => setShowImport((v) => !v)}
-            className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            {showImport ? "Hide import" : "+ Add items"}
-          </button>
+          <div className="flex items-center gap-3">
+            {stats.due > 0 && (
+              <button
+                type="button"
+                onClick={() => setRevising(true)}
+                className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+              >
+                Revise {stats.due} due →
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowImport((v) => !v)}
+              className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              {showImport ? "Hide import" : "+ Add items"}
+            </button>
+          </div>
         </div>
 
         {(showImport || stats.total === 0) && (
@@ -210,10 +233,14 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
               }
               onSetMastery={(itemId, mastery) => void session.setMastery(itemId, mastery)}
               onRemove={(itemId) => void session.removeItem(itemId)}
+              onRevise={(itemId) => void session.revise(itemId)}
+              onToggleFlag={(itemId, flagged) => void session.setReviewFlag(itemId, flagged)}
               filtered={isFiltering(activeFilters)}
               onClearFilters={resetFilters}
             />
           </>
+        )}
+        </>
         )}
       </div>
     </div>

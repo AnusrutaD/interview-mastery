@@ -3,11 +3,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { MasteryLevel } from "@/core/domain/mastery";
 import type { ProblemWithProgress } from "@/core/domain/progress";
-import { reviewLabel } from "@/core/domain/review";
+import { reviewAnchor, reviewLabel } from "@/core/domain/review";
 import { formatDateTime, formatDuration } from "@/core/time/format";
 import { DifficultyBadge, MasteryBadge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import { MasterySelector } from "./MasterySelector";
+import { ReviewControls } from "@/features/items/components/ReviewControls";
 
 const PAGE_SIZE = 5;
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
@@ -16,6 +17,9 @@ interface ProblemTableProps {
   problems: ProblemWithProgress[];
   onSetMastery: (problemId: number, mastery: MasteryLevel) => void;
   onSaveNote: (problemId: number, note: string) => void;
+  /** Clear a due problem by reviewing it. Controls hidden when omitted. */
+  onRevise?: (problemId: number) => void;
+  onToggleFlag?: (problemId: number, flagged: boolean) => void;
   page: number;
   onPageChange: (page: number) => void;
   disabled?: boolean;
@@ -25,6 +29,8 @@ export function ProblemTable({
   problems,
   onSetMastery,
   onSaveNote,
+  onRevise,
+  onToggleFlag,
   page,
   onPageChange,
   disabled,
@@ -88,6 +94,8 @@ export function ProblemTable({
                 problem={problem}
                 onSetMastery={onSetMastery}
                 onSaveNote={onSaveNote}
+                onRevise={onRevise}
+                onToggleFlag={onToggleFlag}
                 disabled={disabled}
               />
             ))}
@@ -171,16 +179,31 @@ function ProblemRow({
   problem,
   onSetMastery,
   onSaveNote,
+  onRevise,
+  onToggleFlag,
   disabled,
 }: {
   problem: ProblemWithProgress;
   onSetMastery: (problemId: number, mastery: MasteryLevel) => void;
   onSaveNote: (problemId: number, note: string) => void;
+  onRevise?: (problemId: number) => void;
+  onToggleFlag?: (problemId: number, flagged: boolean) => void;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draftNote, setDraftNote] = useState(problem.notes ?? "");
-  const status = reviewLabel(problem.mastery, problem.lastMasteryAt);
+  // Anchored on the same timestamp the due badge uses. Reading `lastMasteryAt`
+  // directly would ignore revisions, so a freshly revised problem would read
+  // "Overdue by 5d" while showing as not due.
+  const status = reviewLabel(
+    problem.mastery,
+    reviewAnchor({
+      mastery: problem.mastery,
+      lastPracticedAt: problem.lastMasteryAt,
+      lastRevisedAt: problem.lastRevisedAt,
+      flaggedForReviewAt: problem.flaggedForReviewAt,
+    })
+  );
 
   return (
     <>
@@ -197,8 +220,14 @@ function ProblemRow({
               {problem.title}
             </span>
             {problem.due && (
-              <span className="text-red-500 text-xs shrink-0" title={status ?? "Due"}>
-                🔴
+              <span
+                className={cn(
+                  "text-xs shrink-0",
+                  problem.flagged ? "text-purple-500" : "text-red-500"
+                )}
+                title={problem.flagged ? "You flagged this for review" : (status ?? "Due")}
+              >
+                {problem.flagged ? "★" : "🔴"}
               </span>
             )}
           </div>
@@ -229,6 +258,9 @@ function ProblemRow({
 
                 {problem.lastMasteryAt && (
                   <Meta label="Last solved" value={formatDateTime(problem.lastMasteryAt)} />
+                )}
+                {problem.lastRevisedAt && (
+                  <Meta label="Last revised" value={formatDateTime(problem.lastRevisedAt)} />
                 )}
                 {problem.totalTimeSeconds > 0 && (
                   <Meta
@@ -272,6 +304,23 @@ function ProblemRow({
                   disabled={disabled}
                 />
               </div>
+
+              {(onRevise || onToggleFlag) && (
+                <div onClick={(event) => event.stopPropagation()}>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">
+                    Review
+                  </p>
+                  <ReviewControls
+                    due={problem.due}
+                    flagged={problem.flagged}
+                    revisionCount={problem.revisionCount}
+                    onRevise={() => onRevise?.(problem.id)}
+                    onToggleFlag={(next) => onToggleFlag?.(problem.id, next)}
+                    disabled={disabled}
+                    size="md"
+                  />
+                </div>
+              )}
 
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">Notes</p>

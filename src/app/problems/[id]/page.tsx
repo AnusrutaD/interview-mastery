@@ -16,6 +16,7 @@ import { MasterySelector } from "@/features/problems/components/MasterySelector"
 import { CompanyTags } from "@/features/problems/components/CompanyTags";
 import { ProblemBriefCard } from "@/features/problems/components/ProblemBriefCard";
 import { ProblemNavigator } from "@/features/problems/components/ProblemNavigator";
+import { ReviewControls } from "@/features/items/components/ReviewControls";
 import { useProblemSession } from "@/features/progress/hooks/useProblemSession";
 import { SolveTimer } from "@/features/timer/components/SolveTimer";
 import { cn } from "@/lib/cn";
@@ -182,6 +183,26 @@ export default function ProblemDetailPage({ params }: { params: Promise<{ id: st
                   level — scheduled review every {interval} day{interval > 1 ? "s" : ""}.
                 </p>
               )}
+
+              {/* Sits beside mastery on purpose: revising is the alternative to
+                  re-solving, so the two choices belong in the same place. */}
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                <ReviewControls
+                  due={session.due}
+                  flagged={session.flagged}
+                  revisionCount={record.revisionCount}
+                  onRevise={() => void session.revise()}
+                  onToggleFlag={(next) => void session.setReviewFlag(next)}
+                  disabled={!isAuthenticated || session.saving}
+                  size="md"
+                />
+                {session.due && (
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2">
+                    Been through your notes and it stuck? Mark it revised — that clears the
+                    review without claiming you solved it again.
+                  </p>
+                )}
+              </div>
             </>
           )}
         </Card>

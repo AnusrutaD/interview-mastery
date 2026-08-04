@@ -32,6 +32,9 @@ const PROGRESS_SELECT = {
   repeatCount: true,
   totalTimeSeconds: true,
   lastPracticedAt: true,
+  revisionCount: true,
+  lastRevisedAt: true,
+  flaggedForReviewAt: true,
   updatedAt: true,
   item: { select: { externalId: true } },
 } as const;
@@ -43,6 +46,9 @@ type ItemProgressRow = {
   repeatCount: number;
   totalTimeSeconds: number;
   lastPracticedAt: Date | null;
+  revisionCount: number;
+  lastRevisedAt: Date | null;
+  flaggedForReviewAt: Date | null;
   updatedAt: Date;
   item: { externalId: string | null };
 };
@@ -58,6 +64,9 @@ function toRecord(row: ItemProgressRow): ProgressRecord {
     // `updatedAt` matches the legacy read path, so rows migrated from before the
     // column existed still appear in activity and review scheduling.
     lastMasteryAt: (row.lastPracticedAt ?? row.updatedAt)?.toISOString() ?? null,
+    revisionCount: row.revisionCount ?? 0,
+    lastRevisedAt: row.lastRevisedAt?.toISOString() ?? null,
+    flaggedForReviewAt: row.flaggedForReviewAt?.toISOString() ?? null,
     updatedAt: row.updatedAt?.toISOString() ?? null,
   };
 }
@@ -278,6 +287,8 @@ export async function upsertProgress(
         mastery: input.mastery,
         repeatCount: { increment: 1 },
         lastPracticedAt: now,
+        // Solving answers a manual review request, so the flag goes with it.
+        flaggedForReviewAt: null,
       }),
       ...(input.notes !== undefined && { notes: input.notes }),
       ...(input.companies !== undefined && { companies: input.companies }),
@@ -297,6 +308,73 @@ export async function upsertProgress(
   });
 
   return { problemId: problem.id, ...toRecord(row) };
+}
+
+/* ── Revisions ────────────────────────────────────────────────────────────── */
+
+/** Resolve a catalogue problem to its item, seeding the collection if needed. */
+async function requireItemFor(userId: string, problemId: number): Promise<string> {
+  const problem = getProblemById(problemId);
+  if (!problem) throw ApiError.notFound(`Unknown problem id: ${problemId}`);
+
+  const collectionId = await ensureDsaCollection(userId);
+  const item = await prisma.item.findFirst({
+    where: { collectionId, externalId: slugForProblem(problem) },
+    select: { id: true },
+  });
+  if (!item) throw ApiError.notFound(`Item missing for problem: ${problemId}`);
+  return item.id;
+}
+
+/**
+ * Record a revision against a catalogue problem.
+ *
+ * Leaves `mastery` and `repeatCount` alone — see `reviseItem`. Pushes the
+ * review schedule out and clears any manual flag.
+ */
+export async function reviseProblem(
+  userId: string,
+  problemId: number
+): Promise<ProgressRecord & { problemId: number }> {
+  const itemId = await requireItemFor(userId, problemId);
+
+  const row = await prisma.itemProgress.upsert({
+    where: { userId_itemId: { userId, itemId } },
+    update: {
+      revisionCount: { increment: 1 },
+      lastRevisedAt: new Date(),
+      flaggedForReviewAt: null,
+    },
+    create: {
+      userId,
+      itemId,
+      mastery: "unseen",
+      revisionCount: 1,
+      lastRevisedAt: new Date(),
+    },
+    select: PROGRESS_SELECT,
+  });
+
+  return { problemId, ...toRecord(row) };
+}
+
+/** Flag a catalogue problem for review, or clear the flag. */
+export async function setProblemReviewFlag(
+  userId: string,
+  problemId: number,
+  flagged: boolean
+): Promise<ProgressRecord & { problemId: number }> {
+  const itemId = await requireItemFor(userId, problemId);
+  const flaggedForReviewAt = flagged ? new Date() : null;
+
+  const row = await prisma.itemProgress.upsert({
+    where: { userId_itemId: { userId, itemId } },
+    update: { flaggedForReviewAt },
+    create: { userId, itemId, mastery: "unseen", flaggedForReviewAt },
+    select: PROGRESS_SELECT,
+  });
+
+  return { problemId, ...toRecord(row) };
 }
 
 /**

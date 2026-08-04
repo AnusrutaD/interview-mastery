@@ -129,3 +129,23 @@ export async function saveWatchProgress(
   );
   return progress;
 }
+
+/** Record a revision against a collection item. */
+export async function reviseItem(itemId: string): Promise<ItemRecord> {
+  const { progress } = await post<{ progress: ItemRecord }>(
+    `/api/items/${itemId}/revise`,
+    {}
+  );
+  return progress;
+}
+
+/** Set or clear an item's manual review flag. */
+export async function flagItemForReview(itemId: string, flagged: boolean): Promise<ItemRecord> {
+  const res = await fetch(`/api/items/${itemId}/revise`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ flagged }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Could not update");
+  return (await res.json()).progress;
+}

@@ -47,3 +47,17 @@ export const progressQuerySchema = z.object({
 export const updateSettingsSchema = z.object({
   dailyGoal: z.number().int().min(1).max(50),
 });
+
+/** Body for POST /api/progress/revise. */
+export const reviseProblemSchema = z.object({
+  problemId: z.number().int().positive(),
+});
+
+/** Body for PATCH /api/progress/revise. */
+export const flagProblemSchema = z.object({
+  problemId: z.number().int().positive(),
+  flagged: z.boolean(),
+});
+
+export type ReviseProblemInput = z.infer<typeof reviseProblemSchema>;
+export type FlagProblemInput = z.infer<typeof flagProblemSchema>;

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { MasteryLevel } from "@/core/domain/mastery";
 import {
+  EMPTY_PROGRESS,
   joinProgress,
   summarize,
   type ProblemWithProgress,
@@ -10,7 +11,12 @@ import {
   type ProgressStats,
 } from "@/core/domain/progress";
 import { PROBLEMS, getProblemsByCategory } from "@/data/problems";
-import { fetchProgress, saveProgress } from "../api/progress.client";
+import {
+  fetchProgress,
+  saveProgress,
+  reviseProblem as reviseProblemRequest,
+  flagProblemForReview,
+} from "../api/progress.client";
 import { useLiveSync } from "./useLiveSync";
 
 interface UseProgressOptions {
@@ -30,6 +36,10 @@ export interface UseProgressResult {
   refresh: () => void;
   setMastery: (problemId: number, mastery: MasteryLevel) => Promise<void>;
   setNotes: (problemId: number, notes: string) => Promise<void>;
+  /** Clear a due problem by reviewing it, without touching mastery. */
+  revise: (problemId: number) => Promise<void>;
+  /** Force a problem due, or clear that request. */
+  setReviewFlag: (problemId: number, flagged: boolean) => Promise<void>;
 }
 
 /**
@@ -86,16 +96,19 @@ export function useProgress(options: UseProgressOptions = {}): UseProgressResult
       setProgress((current) => ({
         ...current,
         [problemId]: {
+          // Spread first so fields this action does not own — revision history,
+          // review flags — survive, and a newly added field cannot be silently
+          // dropped here the way it would be by rebuilding the record.
+          ...(current[problemId] ?? EMPTY_PROGRESS),
           mastery: patch.mastery ?? current[problemId]?.mastery ?? "unseen",
           notes: patch.notes ?? current[problemId]?.notes ?? null,
-          companies: current[problemId]?.companies ?? [],
           repeatCount:
             (current[problemId]?.repeatCount ?? 0) + (patch.mastery !== undefined ? 1 : 0),
-          totalTimeSeconds: current[problemId]?.totalTimeSeconds ?? 0,
-          lastMasteryAt:
-            patch.mastery !== undefined
-              ? new Date().toISOString()
-              : (current[problemId]?.lastMasteryAt ?? null),
+          ...(patch.mastery !== undefined && {
+            lastMasteryAt: new Date().toISOString(),
+            // Solving answers a manual review request.
+            flaggedForReviewAt: null,
+          }),
           updatedAt: new Date().toISOString(),
         },
       }));
@@ -135,6 +148,39 @@ export function useProgress(options: UseProgressOptions = {}): UseProgressResult
   );
   const stats = useMemo(() => summarize(problems), [problems]);
 
+  const revise = useCallback(async (problemId: number) => {
+    // Optimistic: clearing a due queue should feel immediate. The server owns
+    // the counters, so the response replaces this guess rather than adding to it.
+    setProgress((current) => ({
+      ...current,
+      [problemId]: {
+        ...(current[problemId] ?? EMPTY_PROGRESS),
+        revisionCount: (current[problemId]?.revisionCount ?? 0) + 1,
+        lastRevisedAt: new Date().toISOString(),
+        flaggedForReviewAt: null,
+      },
+    }));
+
+    try {
+      const saved = await reviseProblemRequest(problemId);
+      setProgress((current) => ({ ...current, [problemId]: saved }));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not record revision");
+      refresh();
+    }
+  }, [refresh]);
+
+  const setReviewFlag = useCallback(async (problemId: number, flagged: boolean) => {
+    try {
+      const saved = await flagProblemForReview(problemId, flagged);
+      setProgress((current) => ({ ...current, [problemId]: saved }));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update review flag");
+    }
+  }, []);
+
   return {
     problems,
     stats,
@@ -145,5 +191,7 @@ export function useProgress(options: UseProgressOptions = {}): UseProgressResult
     refresh,
     setMastery,
     setNotes,
+    revise,
+    setReviewFlag,
   };
 }

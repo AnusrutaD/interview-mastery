@@ -22,8 +22,18 @@ function readStoredPage(): number {
 }
 
 export function Dashboard() {
-  const { problems, stats, loading, syncing, error, isAuthenticated, setMastery, setNotes } =
-    useProgress();
+  const {
+    problems,
+    stats,
+    loading,
+    syncing,
+    error,
+    isAuthenticated,
+    setMastery,
+    setNotes,
+    revise,
+    setReviewFlag,
+  } = useProgress();
 
   const [filters, setFilters] = useState<ProblemFilterState>(DEFAULT_FILTERS);
   const [page, setPage] = useState(readStoredPage);
@@ -109,6 +119,8 @@ export function Dashboard() {
               problems={filtered}
               onSetMastery={(id, level) => void setMastery(id, level)}
               onSaveNote={(id, note) => void setNotes(id, note)}
+              onRevise={(id) => void revise(id)}
+              onToggleFlag={(id, flagged) => void setReviewFlag(id, flagged)}
               page={page}
               onPageChange={handlePageChange}
               disabled={!isAuthenticated}

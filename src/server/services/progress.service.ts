@@ -35,6 +35,13 @@ function toRecord(row: ProgressRow): ProgressRecord {
     repeatCount: row.repeatCount ?? 0,
     totalTimeSeconds: row.totalTimeSeconds ?? 0,
     lastMasteryAt: (row.lastMasteryAt ?? row.updatedAt)?.toISOString() ?? null,
+    // Revisions and review flags live only in the collection model. `Progress`
+    // is frozen and will never gain these columns, so this path reports the
+    // empty state rather than pretending to know — it is only reachable if the
+    // cutover is reverted.
+    revisionCount: 0,
+    lastRevisedAt: null,
+    flaggedForReviewAt: null,
     updatedAt: row.updatedAt?.toISOString() ?? null,
   };
 }

@@ -91,3 +91,8 @@ export type CreateCollectionInput = z.infer<typeof createCollectionSchema>;
 export type UpdateCollectionInput = z.infer<typeof updateCollectionSchema>;
 export type ImportItemsInput = z.infer<typeof importItemsSchema>;
 export type UpsertItemProgressInput = z.infer<typeof upsertItemProgressSchema>;
+
+/** Body for PATCH on an item's revise route. */
+export const flagItemSchema = z.object({ flagged: z.boolean() });
+
+export type FlagItemInput = z.infer<typeof flagItemSchema>;

@@ -6,7 +6,7 @@
 import { DAY_MS, istDayKey, istDayStart, isISTToday } from "../time/ist";
 import type { Difficulty } from "./difficulty";
 import { isAttempted, isSolved, type MasteryLevel } from "./mastery";
-import { isDue } from "./review";
+import { isDueNow, isFlaggedForReview } from "./review";
 
 /** A NeetCode problem — static reference data. */
 export interface Problem {
@@ -61,6 +61,12 @@ export interface ProgressRecord {
   totalTimeSeconds: number;
   /** Set only on deliberate practice. Drives scheduling and activity history. */
   lastMasteryAt: string | null;
+  /** Times the problem was revised without being re-solved. */
+  revisionCount: number;
+  /** Set when revised. Pushes the schedule out just as practice does. */
+  lastRevisedAt: string | null;
+  /** Set when the user asked to see this again. Cleared by the next review. */
+  flaggedForReviewAt: string | null;
   /** Row mtime. Bumped by any write — do not use for scheduling. */
   updatedAt: string | null;
 }
@@ -68,6 +74,8 @@ export interface ProgressRecord {
 /** Problem joined with the user's progress. What the UI actually renders. */
 export interface ProblemWithProgress extends Problem, ProgressRecord {
   due: boolean;
+  /** Due because the user asked for it, not because the schedule said so. */
+  flagged: boolean;
 }
 
 export type ProgressMap = Record<number, ProgressRecord>;
@@ -79,6 +87,9 @@ export const EMPTY_PROGRESS: ProgressRecord = {
   repeatCount: 0,
   totalTimeSeconds: 0,
   lastMasteryAt: null,
+  revisionCount: 0,
+  lastRevisedAt: null,
+  flaggedForReviewAt: null,
   updatedAt: null,
 };
 
@@ -86,10 +97,19 @@ export const EMPTY_PROGRESS: ProgressRecord = {
 export function joinProgress(problems: readonly Problem[], progress: ProgressMap): ProblemWithProgress[] {
   return problems.map((problem) => {
     const record = progress[problem.id] ?? EMPTY_PROGRESS;
+    // Due state folds in revisions and manual flags, so reading your notes
+    // clears a problem and flagging one surfaces it. See core/domain/review.ts.
+    const review = {
+      mastery: record.mastery,
+      lastPracticedAt: record.lastMasteryAt,
+      lastRevisedAt: record.lastRevisedAt,
+      flaggedForReviewAt: record.flaggedForReviewAt,
+    };
     return {
       ...problem,
       ...record,
-      due: isDue(record.mastery, record.lastMasteryAt),
+      due: isDueNow(review),
+      flagged: isFlaggedForReview(review),
     };
   });
 }

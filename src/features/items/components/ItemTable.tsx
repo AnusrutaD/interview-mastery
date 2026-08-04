@@ -3,12 +3,13 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ITEM_KIND_CONFIG, type ItemWithProgress } from "@/core/domain/collection";
 import type { MasteryLevel } from "@/core/domain/mastery";
-import { reviewLabel } from "@/core/domain/review";
+import { reviewAnchor, reviewLabel } from "@/core/domain/review";
 import { formatClock, formatDuration, formatRelative } from "@/core/time/format";
 import { describeWatch } from "@/core/domain/watch";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MasterySelector } from "@/features/problems/components/MasterySelector";
+import { DueBadge, ReviewControls } from "./ReviewControls";
 import { cn } from "@/lib/cn";
 
 const PAGE_SIZE = 10;
@@ -19,6 +20,9 @@ export interface ItemTableProps {
   hrefFor?: (item: ItemWithProgress) => string | null;
   onSetMastery: (itemId: string, mastery: MasteryLevel) => void;
   onRemove?: (itemId: string) => void;
+  /** Clear a due item by reviewing it. Controls are hidden when omitted. */
+  onRevise?: (itemId: string) => void;
+  onToggleFlag?: (itemId: string, flagged: boolean) => void;
   /** Extra controls in the expanded row — "Detail →", "Watch →", etc. */
   actionsFor?: (item: ItemWithProgress) => ReactNode;
   disabled?: boolean;
@@ -43,6 +47,8 @@ export function ItemTable({
   hrefFor,
   onSetMastery,
   onRemove,
+  onRevise,
+  onToggleFlag,
   actionsFor,
   disabled,
   filtered,
@@ -109,6 +115,10 @@ export function ItemTable({
               actions={actionsFor?.(item)}
               onSetMastery={(mastery) => onSetMastery(item.id, mastery)}
               onRemove={onRemove ? () => onRemove(item.id) : undefined}
+              onRevise={onRevise ? () => onRevise(item.id) : undefined}
+              onToggleFlag={
+                onToggleFlag ? (flagged) => onToggleFlag(item.id, flagged) : undefined
+              }
               disabled={disabled}
             />
           ))}
@@ -162,6 +172,8 @@ function ItemRow({
   actions,
   onSetMastery,
   onRemove,
+  onRevise,
+  onToggleFlag,
   disabled,
 }: {
   item: ItemWithProgress;
@@ -170,10 +182,15 @@ function ItemRow({
   actions?: ReactNode;
   onSetMastery: (mastery: MasteryLevel) => void;
   onRemove?: () => void;
+  onRevise?: () => void;
+  onToggleFlag?: (flagged: boolean) => void;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const status = reviewLabel(item.mastery, item.lastPracticedAt);
+  // Anchored on the same timestamp the due badge uses. Reading `lastPracticedAt`
+  // directly would ignore revisions, so a freshly revised item would show
+  // "Overdue by 5d" next to a badge saying it is not due.
+  const status = reviewLabel(item.mastery, reviewAnchor(item));
 
   const watch =
     item.kind === "video" && item.durationSeconds
@@ -231,14 +248,7 @@ function ItemRow({
             </span>
           )}
 
-          {item.due && (
-            <span
-              className="text-[10px] font-semibold text-red-500 shrink-0"
-              title={status ?? "Due"}
-            >
-              🔴 due
-            </span>
-          )}
+          <DueBadge due={item.due} flagged={item.flagged} />
 
           <button
             type="button"
@@ -264,10 +274,27 @@ function ItemRow({
 
         <MasterySelector value={item.mastery} onChange={onSetMastery} disabled={disabled} />
 
+        {/* Inline so a due queue can be cleared without opening every item —
+            the case this feature exists for. */}
+        {(onRevise || onToggleFlag) && (
+          <div className="mt-2">
+            <ReviewControls
+              due={item.due}
+              flagged={item.flagged}
+              revisionCount={item.revisionCount}
+              onRevise={() => onRevise?.()}
+              onToggleFlag={(next) => onToggleFlag?.(next)}
+              disabled={disabled}
+            />
+          </div>
+        )}
+
         {open && (
           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-4 flex-wrap text-[11px] text-gray-400 dark:text-gray-500">
             {item.topic && <span>{item.topic}</span>}
+            {status && <span>{status}</span>}
             {item.lastPracticedAt && <span>Last {formatRelative(item.lastPracticedAt)}</span>}
+            {item.lastRevisedAt && <span>Revised {formatRelative(item.lastRevisedAt)}</span>}
             {item.repeatCount > 0 && <span>{item.repeatCount}× reviewed</span>}
             {item.totalTimeSeconds > 0 && <span>{formatDuration(item.totalTimeSeconds)} spent</span>}
             {actions}

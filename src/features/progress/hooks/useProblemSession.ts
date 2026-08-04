@@ -3,10 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { MasteryLevel } from "@/core/domain/mastery";
 import { EMPTY_PROGRESS, type ProgressRecord } from "@/core/domain/progress";
-import { isDue, reviewLabel } from "@/core/domain/review";
+import { isDueNow, isFlaggedForReview, reviewAnchor, reviewLabel } from "@/core/domain/review";
 import { useSolveTimer } from "@/features/timer/hooks/useSolveTimer";
 import {
   fetchProblemProgress,
+  flagProblemForReview,
+  reviseProblem,
   saveCompanies,
   saveMastery,
   saveNotes,
@@ -36,6 +38,12 @@ export interface UseProblemSessionResult {
   setMastery: (level: MasteryLevel) => Promise<void>;
   setNotes: (notes: string) => Promise<void>;
   setCompanies: (companies: string[]) => Promise<void>;
+  /** Clear a due problem by reviewing it, without touching mastery. */
+  revise: () => Promise<void>;
+  /** Force this problem due, or clear that request. */
+  setReviewFlag: (flagged: boolean) => Promise<void>;
+  /** Due because the user asked, not because the schedule said so. */
+  flagged: boolean;
   dismissLastSession: () => void;
 }
 
@@ -205,20 +213,64 @@ export function useProblemSession(problemId: number | null): UseProblemSessionRe
     [problemId]
   );
 
+  const revise = useCallback(async () => {
+    if (problemId === null) return;
+    setSaving(true);
+    try {
+      const saved = await reviseProblem(problemId);
+      setRecord(saved);
+      // A revision does not change lastMasteryAt, so the external-submission
+      // detector must not be told otherwise — leaving `knownMasteryAt` alone is
+      // what stops a revision from masking a real LeetCode submission.
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not record revision");
+    } finally {
+      setSaving(false);
+    }
+  }, [problemId]);
+
+  const setReviewFlag = useCallback(
+    async (flagged: boolean) => {
+      if (problemId === null) return;
+      setSaving(true);
+      try {
+        setRecord(await flagProblemForReview(problemId, flagged));
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not update review flag");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [problemId]
+  );
+
+  // Scheduling reads the review anchor — the later of practice and revision —
+  // never updatedAt. See core/domain/review.ts.
+  const reviewState = {
+    mastery: record.mastery,
+    lastPracticedAt: record.lastMasteryAt,
+    lastRevisedAt: record.lastRevisedAt,
+    flaggedForReviewAt: record.flaggedForReviewAt,
+  };
+
   return {
     record,
     loading,
     saving,
     error,
     isAuthenticated,
-    // Scheduling reads lastMasteryAt, never updatedAt — see core/domain/review.
-    due: isDue(record.mastery, record.lastMasteryAt),
-    reviewStatus: reviewLabel(record.mastery, record.lastMasteryAt),
+    due: isDueNow(reviewState),
+    flagged: isFlaggedForReview(reviewState),
+    reviewStatus: reviewLabel(record.mastery, reviewAnchor(reviewState)),
     lastSession,
     timer,
     setMastery,
     setNotes,
     setCompanies,
+    revise,
+    setReviewFlag,
     dismissLastSession: useCallback(() => setLastSession(null), []),
   };
 }

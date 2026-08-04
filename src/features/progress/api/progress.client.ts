@@ -65,3 +65,31 @@ export function saveCompanies(problemId: number, companies: string[]) {
 export function saveMastery(problemId: number, mastery: MasteryLevel, timeSeconds?: number) {
   return saveProgress({ problemId, mastery, ...(timeSeconds ? { timeSeconds } : {}) });
 }
+
+/**
+ * Record a revision — the problem was reviewed, not re-solved.
+ *
+ * A distinct endpoint from `saveProgress` on purpose: going through the mastery
+ * upsert would bump the solve counters and reset mastery, conflating the two
+ * metrics the feature exists to keep apart.
+ */
+export async function reviseProblem(problemId: number): Promise<ProgressRecord> {
+  const { progress } = await post<{ progress: ProgressRecord }>("/api/progress/revise", {
+    problemId,
+  });
+  return progress;
+}
+
+/** Set or clear the manual "show me this again" flag. */
+export async function flagProblemForReview(
+  problemId: number,
+  flagged: boolean
+): Promise<ProgressRecord> {
+  const res = await fetch("/api/progress/revise", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ problemId, flagged }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Could not update");
+  return (await res.json()).progress;
+}
