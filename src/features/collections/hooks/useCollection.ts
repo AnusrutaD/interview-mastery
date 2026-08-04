@@ -4,18 +4,20 @@ import { useSession } from "next-auth/react";
 import {
   joinItems,
   summarizeCollection,
-  dailyTargetProgress,
   suggestNextItem,
+  toTargetContributions,
   type Collection,
   type Item,
   type ItemProgressMap,
 } from "@/core/domain/collection";
+import { measureTarget, toTarget, type Target, type TargetProgress } from "@/core/domain/target";
 import type { MasteryLevel } from "@/core/domain/mastery";
 import {
   fetchCollection,
   importText as importTextRequest,
   importPlaylist as importPlaylistRequest,
   saveItemProgress,
+  updateCollection,
   deleteItem as deleteItemRequest,
   type ImportResponse,
 } from "../api/collection.client";
@@ -24,13 +26,17 @@ export interface UseCollectionResult {
   collection: Collection | null;
   items: ReturnType<typeof joinItems>;
   stats: ReturnType<typeof summarizeCollection>;
-  targetProgress: ReturnType<typeof dailyTargetProgress>;
+  /** The list's configured target, or null if the user opted out of pacing. */
+  target: Target | null;
+  targetProgress: TargetProgress | null;
   nextItem: ReturnType<typeof suggestNextItem>;
   loading: boolean;
   saving: boolean;
   error: string | null;
   isAuthenticated: boolean;
   refresh: () => void;
+  /** Pass null to clear the target entirely. */
+  setTarget: (target: Target | null) => Promise<void>;
   setMastery: (itemId: string, mastery: MasteryLevel) => Promise<void>;
   setNotes: (itemId: string, notes: string) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
@@ -155,18 +161,59 @@ export function useCollection(collectionId: string): UseCollectionResult {
     [collectionId, refresh]
   );
 
+  const setTarget = useCallback(
+    async (target: Target | null) => {
+      setSaving(true);
+      try {
+        const saved = await updateCollection(collectionId, {
+          targetPeriod: target?.period ?? null,
+          targetUnit: target?.unit ?? null,
+          targetValue: target?.value ?? null,
+          // Kept in step so anything still reading the legacy column — the
+          // collections index cards — agrees with what the detail page shows.
+          dailyTarget:
+            target && target.period === "daily" && target.unit === "count" ? target.value : null,
+        });
+        setCollection(saved);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not save target");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [collectionId]
+  );
+
   const items = useMemo(() => joinItems(rawItems, progress), [rawItems, progress]);
   const stats = useMemo(() => summarizeCollection(items), [items]);
-  const targetProgress = useMemo(
-    () => (collection ? dailyTargetProgress(collection, stats) : null),
-    [collection, stats]
+
+  const target = useMemo(
+    () =>
+      collection
+        ? toTarget({
+            period: collection.targetPeriod,
+            unit: collection.targetUnit,
+            // Lists created before periods existed only have `dailyTarget`.
+            // Reading through to it means their target keeps working untouched.
+            value: collection.targetValue ?? collection.dailyTarget,
+          })
+        : null,
+    [collection]
   );
+
+  const targetProgress = useMemo(
+    () => (target ? measureTarget(target, toTargetContributions(items)) : null),
+    [target, items]
+  );
+
   const nextItem = useMemo(() => suggestNextItem(items), [items]);
 
   return {
     collection,
     items,
     stats,
+    target,
     targetProgress,
     nextItem,
     loading,
@@ -174,6 +221,7 @@ export function useCollection(collectionId: string): UseCollectionResult {
     error,
     isAuthenticated,
     refresh,
+    setTarget,
     setMastery,
     setNotes,
     removeItem,

@@ -1,5 +1,6 @@
 import type { MasteryLevel } from "@/core/domain/mastery";
 import type { Collection, Item, ItemProgressMap, ItemRecord } from "@/core/domain/collection";
+import type { TargetPeriod, TargetUnit } from "@/core/domain/target";
 import type { ParsedItem } from "@/core/domain/itemImport";
 import type { ImportIssue } from "@/core/domain/itemImport";
 import type { CollectionSummary } from "@/server/services/collection.service";
@@ -29,7 +30,11 @@ export interface CreateCollectionBody {
   description?: string | null;
   source?: Collection["source"];
   sourceUrl?: string | null;
+  /** Legacy daily count target. Superseded by the target* fields below. */
   dailyTarget?: number | null;
+  targetPeriod?: TargetPeriod | null;
+  targetUnit?: TargetUnit | null;
+  targetValue?: number | null;
   icon?: string | null;
 }
 

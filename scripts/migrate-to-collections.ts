@@ -13,13 +13,35 @@
  * partial run can simply be repeated.
  *
  * Usage:
- *   npx tsx scripts/migrate-to-collections.ts --dry-run
- *   npx tsx scripts/migrate-to-collections.ts
- *   npx tsx scripts/migrate-to-collections.ts --user <userId>
+ *   npm run migrate:collections -- --dry-run
+ *   npm run migrate:collections -- --user <userId>
+ *   npm run migrate:collections
  */
+// Next.js loads .env.local automatically; a plain node script does not, which
+// is the whole reason this is here.
+//
+// Import hoisting makes this look wrong but it is not: ES imports are all
+// evaluated before this call, yet Prisma reads DATABASE_URL when the client is
+// *constructed*, not when the module is imported. `new PrismaClient()` below is
+// a statement, so it runs after this. Do not move the construction into an
+// import-time side effect.
+import { config as loadEnv } from "dotenv";
+loadEnv({ path: ".env.local" });
+
 import { PrismaClient } from "@prisma/client";
 import { PROBLEMS } from "../src/data/problems";
 import { dedupeKeyFor } from "../src/core/domain/collection";
+// Shared with the read path in dsaProgress.service.ts — the backfill and the
+// service must agree on this key exactly, or migrated history goes unfound.
+import { slugForProblem } from "../src/core/domain/dsaCatalog";
+
+if (!process.env.DATABASE_URL) {
+  console.error(
+    "DATABASE_URL is not set. Expected it in .env.local at the project root,\n" +
+      "or exported in your shell. Nothing was run."
+  );
+  process.exit(1);
+}
 
 const prisma = new PrismaClient();
 
@@ -28,7 +50,26 @@ const TEMPLATE_KEY = "neetcode-150";
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes("--dry-run");
-const ONLY_USER = args[args.indexOf("--user") + 1] ?? null;
+
+/**
+ * Absent `--user` means "every user".
+ *
+ * The obvious `args[args.indexOf("--user") + 1]` is wrong and silently so:
+ * `indexOf` returns -1 when the flag is missing, so it reads `args[0]` and
+ * happily scopes the run to a user named "--dry-run", which matches nobody.
+ * The result is a migration that reports zero users and looks like an empty
+ * database rather than a parsing mistake.
+ */
+const ONLY_USER = (() => {
+  const at = args.indexOf("--user");
+  if (at === -1) return null;
+  const value = args[at + 1];
+  if (!value || value.startsWith("--")) {
+    console.error("--user requires a user id, e.g. --user clx8f2k1a0000abcd1234wxyz");
+    process.exit(1);
+  }
+  return value;
+})();
 
 interface Report {
   users: number;
@@ -98,7 +139,7 @@ async function migrateUser(userId: string, report: Report): Promise<void> {
   const itemByExternalId = new Map(existingItems.map((i) => [i.externalId, i.id]));
 
   for (const problem of PROBLEMS) {
-    const slug = problem.url.match(/\/problems\/([^/]+)/)?.[1] ?? String(problem.id);
+    const slug = slugForProblem(problem);
     if (itemByExternalId.has(slug)) continue;
 
     if (!DRY_RUN) {
@@ -134,22 +175,24 @@ async function migrateUser(userId: string, report: Report): Promise<void> {
       continue;
     }
 
-    const slug = problem.url.match(/\/problems\/([^/]+)/)?.[1] ?? String(problem.id);
+    const slug = slugForProblem(problem);
     const itemId = itemByExternalId.get(slug);
     if (!itemId) {
       report.problemsMissing += 1;
       continue;
     }
 
-    if (!DRY_RUN) {
-      const existing = await prisma.itemProgress.findUnique({
-        where: { userId_itemId: { userId, itemId } },
-      });
-      if (existing) {
-        report.progressSkipped += 1;
-        continue;
-      }
+    // Checked in dry-run too, so a second dry run reports "nothing left to do"
+    // rather than restating the whole first run and looking like it failed.
+    const existing = await prisma.itemProgress.findUnique({
+      where: { userId_itemId: { userId, itemId } },
+    });
+    if (existing) {
+      report.progressSkipped += 1;
+      continue;
+    }
 
+    if (!DRY_RUN) {
       await prisma.itemProgress.create({
         data: {
           userId,
@@ -170,24 +213,49 @@ async function migrateUser(userId: string, report: Report): Promise<void> {
   }
 }
 
-/** Confirms every source row landed, without trusting the counters above. */
+/**
+ * Confirms every source row landed, without trusting the counters above.
+ *
+ * Checks identity, not just totals: it verifies that each migratable `Progress`
+ * row has a matching `ItemProgress` row for the *same problem*. Comparing counts
+ * alone would pass if one row failed to migrate while an unrelated row was
+ * created, which is exactly the kind of silent loss this needs to catch.
+ */
 async function verify(userId: string): Promise<string[]> {
-  const problems = await prisma.progress.count({ where: { userId } });
-  const migrated = await prisma.itemProgress.count({
-    where: { userId, item: { collection: { templateKey: TEMPLATE_KEY } } },
-  });
-
-  const knownIds = new Set(PROBLEMS.map((p) => p.id));
-  const orphans = await prisma.progress.findMany({
+  const problemById = new Map(PROBLEMS.map((p) => [p.id, p]));
+  const sourceRows = await prisma.progress.findMany({
     where: { userId },
     select: { problemId: true },
   });
-  const orphanCount = orphans.filter((o) => !knownIds.has(o.problemId)).length;
 
-  const expected = problems - orphanCount;
-  return migrated === expected
+  // Orphans are rows whose problemId is not in the catalogue at all — legacy
+  // damage from the old extension bug. They are unmigratable by definition, so
+  // they are excluded rather than counted as failures.
+  const expectedSlugs = new Set<string>();
+  for (const row of sourceRows) {
+    const problem = problemById.get(row.problemId);
+    if (problem) expectedSlugs.add(slugForProblem(problem));
+  }
+
+  const migratedRows = await prisma.itemProgress.findMany({
+    where: { userId, item: { collection: { templateKey: TEMPLATE_KEY } } },
+    select: { item: { select: { externalId: true } } },
+  });
+  const migratedSlugs = new Set(
+    migratedRows.map((r) => r.item.externalId).filter((s): s is string => Boolean(s))
+  );
+
+  const missing = [...expectedSlugs].filter((slug) => !migratedSlugs.has(slug));
+
+  // Extra rows are fine and expected: the user may have marked a catalogue item
+  // through the collections UI without ever having a legacy Progress row. Only
+  // *missing* rows indicate a failed migration.
+  return missing.length === 0
     ? []
-    : [`user ${userId}: expected ${expected} migrated rows, found ${migrated}`];
+    : [
+        `user ${userId}: ${missing.length} of ${expectedSlugs.size} problems did not migrate ` +
+          `— ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? ", …" : ""}`,
+      ];
 }
 
 async function main() {
@@ -206,6 +274,14 @@ async function main() {
   });
 
   log(`found ${users.length} user(s)`);
+
+  // Listed with emails so you can identify your own account and pass it to
+  // --user, without needing a separate query or Prisma Studio.
+  if (!ONLY_USER) {
+    for (const user of users) {
+      console.log(`   ${user.id}  ${user.email ?? "(no email)"}`);
+    }
+  }
 
   for (const user of users) {
     report.users += 1;

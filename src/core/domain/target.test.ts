@@ -4,6 +4,7 @@ import {
   describeTarget,
   measureTarget,
   periodWindow,
+  summariseTarget,
   toTarget,
   type Contribution,
   type Target,
@@ -143,6 +144,20 @@ describe("toTarget", () => {
       unit: "minutes",
       value: 45,
     });
+  });
+});
+
+describe("summariseTarget", () => {
+  it("renders a count target compactly", () => {
+    expect(summariseTarget({ period: "daily", unit: "count", value: 3 })).toBe("3/day");
+  });
+
+  it("keeps the unit visible for minutes so 30 is not read as 30 items", () => {
+    expect(summariseTarget({ period: "weekly", unit: "minutes", value: 30 })).toBe("30 min/week");
+  });
+
+  it("covers every period", () => {
+    expect(summariseTarget({ period: "monthly", unit: "count", value: 40 })).toBe("40/month");
   });
 });
 

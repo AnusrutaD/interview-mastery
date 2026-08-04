@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  dailyTargetProgress,
   dedupeKeyFor,
   EMPTY_ITEM_RECORD,
   joinItems,
   normaliseUrl,
   suggestNextItem,
   summarizeCollection,
+  toTargetContributions,
   toCollectionSource,
   toItemKind,
   type Collection,
@@ -121,38 +121,6 @@ describe("summarizeCollection", () => {
   });
 });
 
-describe("dailyTargetProgress", () => {
-  const stats = (completedToday: number) => ({ completedToday });
-
-  it("is null when the collection has no target", () => {
-    expect(dailyTargetProgress(collection({ dailyTarget: null }), stats(3))).toBeNull();
-  });
-
-  /**
-   * A null target means the user opted out of pacing this list. That must not
-   * render as "target met" — which is what a naive `done >= target` on 0 does.
-   */
-  it("treats a zero target as no target, not as already met", () => {
-    expect(dailyTargetProgress(collection({ dailyTarget: 0 }), stats(0))).toBeNull();
-  });
-
-  it("reports progress toward a real target", () => {
-    expect(dailyTargetProgress(collection({ dailyTarget: 4 }), stats(1))).toMatchObject({
-      target: 4,
-      done: 1,
-      percent: 25,
-      met: false,
-    });
-  });
-
-  it("caps the percentage at 100 when the target is beaten", () => {
-    expect(dailyTargetProgress(collection({ dailyTarget: 2 }), stats(5))).toMatchObject({
-      percent: 100,
-      met: true,
-    });
-  });
-});
-
 describe("suggestNextItem", () => {
   it("returns null for an empty collection", () => {
     expect(suggestNextItem([])).toBeNull();
@@ -196,6 +164,44 @@ describe("suggestNextItem", () => {
       a: record({ mastery: "mastered", lastPracticedAt: NOW.toISOString() }),
     };
     expect(suggestNextItem(joinItems([item({ id: "a" })], progress))).toBeNull();
+  });
+});
+
+describe("toTargetContributions", () => {
+  it("ignores items that were never completed", () => {
+    const progress: ItemProgressMap = {
+      a: record({ mastery: "unseen" }),
+      b: record({ mastery: "unsolved", lastPracticedAt: NOW.toISOString() }),
+    };
+    expect(toTargetContributions(joinItems([item({ id: "a" }), item({ id: "b" })], progress))).toEqual(
+      []
+    );
+  });
+
+  /**
+   * A minutes target counts the runtime of content *finished*, not time spent.
+   * Watch time accumulates across sessions with no per-day breakdown stored, so
+   * attributing all of it to the completion day would inflate the figure.
+   */
+  it("uses a video's runtime rather than its accumulated watch time", () => {
+    const progress: ItemProgressMap = {
+      a: record({ mastery: "familiar", lastPracticedAt: NOW.toISOString(), watchedSeconds: 4000 }),
+    };
+    const items = joinItems([item({ id: "a", kind: "video", durationSeconds: 600 })], progress);
+    expect(toTargetContributions(items)[0].seconds).toBe(600);
+  });
+
+  it("falls back to time spent for items with no runtime", () => {
+    const progress: ItemProgressMap = {
+      a: record({ mastery: "familiar", lastPracticedAt: NOW.toISOString(), totalTimeSeconds: 900 }),
+    };
+    expect(toTargetContributions(joinItems([item({ id: "a" })], progress))[0].seconds).toBe(900);
+  });
+
+  it("carries the completion timestamp so the window can be applied", () => {
+    const at = "2026-07-27T10:00:00.000Z";
+    const progress: ItemProgressMap = { a: record({ mastery: "mastered", lastPracticedAt: at }) };
+    expect(toTargetContributions(joinItems([item({ id: "a" })], progress))[0].at).toBe(at);
   });
 });
 

@@ -116,6 +116,18 @@ export function describeTarget(progress: TargetProgress): string {
   return `${progress.done} / ${progress.target.value}${unit} ${PERIOD_LABELS[progress.target.period]}`;
 }
 
+const PERIOD_SUFFIX: Record<TargetPeriod, string> = {
+  daily: "day",
+  weekly: "week",
+  monthly: "month",
+};
+
+/** Compact form for list cards: "3/day", "30 min/week". */
+export function summariseTarget(target: Target): string {
+  const unit = target.unit === "minutes" ? " min" : "";
+  return `${target.value}${unit}/${PERIOD_SUFFIX[target.period]}`;
+}
+
 export function isTargetPeriod(value: unknown): value is TargetPeriod {
   return typeof value === "string" && (TARGET_PERIODS as readonly string[]).includes(value);
 }

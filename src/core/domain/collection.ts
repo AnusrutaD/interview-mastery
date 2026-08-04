@@ -193,28 +193,30 @@ export function summarizeCollection(items: readonly ItemWithProgress[]): Collect
   };
 }
 
-/** Progress against a collection's own daily target, if it has one. */
-export interface TargetProgress {
-  target: number;
-  done: number;
-  percent: number;
-  met: boolean;
-}
-
-export function dailyTargetProgress(
-  collection: Pick<Collection, "dailyTarget">,
-  stats: Pick<CollectionStats, "completedToday">
-): TargetProgress | null {
-  const target = collection.dailyTarget;
-  // Null target means the user deliberately opted out of pacing this list —
-  // that is different from a target of zero and must not render as "complete".
-  if (target === null || target <= 0) return null;
-  return {
-    target,
-    done: stats.completedToday,
-    percent: Math.min(100, Math.round((stats.completedToday / target) * 100)),
-    met: stats.completedToday >= target,
-  };
+/**
+ * Turn completed items into contributions a target can measure.
+ *
+ * The `seconds` figure needs a definition that is actually defensible, and this
+ * is the honest one: **runtime of content completed**, not "time spent today".
+ *
+ * The distinction matters. Watch time accumulates across sessions — 20 minutes
+ * yesterday plus 10 today is 30 on the record, with no per-day breakdown stored.
+ * Attributing all 30 to today would inflate the number. So a minutes target
+ * counts the length of the things you *finished* in the period, which is well
+ * defined, matches what the user sees on each row, and never double counts.
+ *
+ * For an item with no runtime (a coding problem) the time actually spent on it
+ * is the closest equivalent.
+ */
+export function toTargetContributions(
+  items: readonly ItemWithProgress[]
+): { at: string; seconds: number }[] {
+  return items
+    .filter((item) => isSolved(item.mastery) && item.lastPracticedAt)
+    .map((item) => ({
+      at: item.lastPracticedAt!,
+      seconds: item.durationSeconds ?? item.totalTimeSeconds,
+    }));
 }
 
 /**

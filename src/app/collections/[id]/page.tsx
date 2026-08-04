@@ -20,8 +20,8 @@ import { ItemFilters } from "@/features/items/components/ItemFilters";
 import { ItemTable } from "@/features/items/components/ItemTable";
 import { useCollection } from "@/features/collections/hooks/useCollection";
 import { ImportPanel } from "@/features/collections/components/ImportPanel";
-import { deleteCollection, updateCollection } from "@/features/collections/api/collection.client";
-import { cn } from "@/lib/cn";
+import { TargetBar, TargetEditor } from "@/features/collections/components/TargetEditor";
+import { deleteCollection } from "@/features/collections/api/collection.client";
 
 export default function CollectionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -30,7 +30,6 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
   const { collection, items, stats, targetProgress, nextItem, loading, saving, error } = session;
 
   const [showImport, setShowImport] = useState(false);
-  const [editingTarget, setEditingTarget] = useState(false);
   const [filters, setFilters] = useState<ItemFilterState>(DEFAULT_ITEM_FILTERS);
 
   // Facets come from the items themselves, so a playlist and a problem set get
@@ -73,12 +72,6 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
       </div>
     );
   }
-
-  const setTarget = async (value: number | null) => {
-    await updateCollection(id, { dailyTarget: value });
-    session.refresh();
-    setEditingTarget(false);
-  };
 
   const remove = async () => {
     if (!window.confirm(`Delete "${collection.name}" and all its progress? This cannot be undone.`))
@@ -140,55 +133,16 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
             </div>
             <ProgressBar value={stats.attempted} max={stats.total} height="h-2.5" className="mb-4" />
 
-            <div className="flex items-center gap-3 flex-wrap">
-              {targetProgress ? (
-                <div
-                  className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs",
-                    targetProgress.met
-                      ? "bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300"
-                      : "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
-                  )}
-                >
-                  <span aria-hidden>{targetProgress.met ? "🎉" : "🎯"}</span>
-                  <span className="font-semibold">
-                    {targetProgress.done} / {targetProgress.target} today
-                  </span>
-                </div>
-              ) : (
-                <span className="text-xs text-gray-400 dark:text-gray-600">No daily target</span>
-              )}
-
-              {editingTarget ? (
-                <div className="flex items-center gap-1.5">
-                  {[1, 2, 3, 5, 10].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => void setTarget(n)}
-                      className="text-xs w-7 h-7 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-400 transition-colors"
-                    >
-                      {n}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => void setTarget(null)}
-                    className="text-xs px-2 h-7 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-300 transition-colors"
-                  >
-                    None
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setEditingTarget(true)}
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  {targetProgress ? "Change target" : "Set a daily target"}
-                </button>
-              )}
-            </div>
+            <TargetEditor
+              target={session.target}
+              progress={targetProgress}
+              // Mostly-timed content defaults to a minutes target, since counting
+              // videos that range from 5 to 90 minutes paces nothing useful.
+              suggestMinutes={stats.byKind.video > stats.total / 2}
+              onSave={session.setTarget}
+              saving={saving}
+            />
+            <TargetBar progress={targetProgress} />
           </Card>
         )}
 

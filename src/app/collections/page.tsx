@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { SOURCE_CONFIG } from "@/core/domain/collection";
+import { summariseTarget, toTarget } from "@/core/domain/target";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -143,6 +144,13 @@ export default function CollectionsPage() {
 
 function CollectionCard({ collection }: { collection: CollectionSummary }) {
   const source = SOURCE_CONFIG[collection.source];
+  // Read through to the legacy column so lists created before periods existed
+  // still show their target on the card.
+  const target = toTarget({
+    period: collection.targetPeriod,
+    unit: collection.targetUnit,
+    value: collection.targetValue ?? collection.dailyTarget,
+  });
   const percent = collection.itemCount
     ? Math.round((collection.completedCount / collection.itemCount) * 100)
     : 0;
@@ -160,7 +168,7 @@ function CollectionCard({ collection }: { collection: CollectionSummary }) {
             </p>
             <p className="text-[11px] text-gray-400 dark:text-gray-500">
               {collection.itemCount} item{collection.itemCount === 1 ? "" : "s"}
-              {collection.dailyTarget ? ` · ${collection.dailyTarget}/day` : ""}
+              {target ? ` · ${summariseTarget(target)}` : ""}
             </p>
           </div>
           {percent === 100 && collection.itemCount > 0 && (
