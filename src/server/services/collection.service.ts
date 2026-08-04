@@ -1,6 +1,7 @@
 import "server-only";
 import { isSolved, toMasteryLevel } from "@/core/domain/mastery";
 import { describeWatch } from "@/core/domain/watch";
+import { insertPositionAfter, shiftForInsert } from "@/core/domain/ordering";
 import {
   dedupeKeyFor,
   toCollectionSource,
@@ -306,12 +307,22 @@ export async function importItems(
 ): Promise<ImportResult> {
   await requireOwnedCollection(userId, collectionId);
 
-  const last = await prisma.item.findFirst({
+  const existing = await prisma.item.findMany({
     where: { collectionId },
-    orderBy: { position: "desc" },
-    select: { position: true },
+    select: { id: true, position: true },
   });
-  const base = (last?.position ?? -1) + 1;
+
+  // `insertAfter` slots the new items in mid-list rather than appending. Null
+  // means the very start; omitted means append, which is the old behaviour and
+  // what a bulk paste should still do.
+  const inserting = input.insertAfter !== undefined;
+  const base = inserting
+    ? insertPositionAfter(existing, input.insertAfter ?? null)
+    : (existing.reduce((max, i) => Math.max(max, i.position), -1) + 1);
+
+  // Shift first, in the same transaction as the insert below, so the list is
+  // never briefly holding two items at the same position.
+  const shifts = inserting ? shiftForInsert(existing, base, input.items.length) : [];
 
   const data = input.items.map((item, index) => ({
     collectionId,
@@ -326,9 +337,26 @@ export async function importItems(
     position: item.position ?? base + index,
   }));
 
-  const { count } = await prisma.item.createMany({ data, skipDuplicates: true });
+  // Interactive transaction so the shift and the insert land together. Between
+  // the two statements the list would otherwise hold duplicate positions, and
+  // position is the sort key.
+  const created = await prisma.$transaction(async (tx) => {
+    if (shifts.length > 0) {
+      await tx.item.updateMany({
+        where: { collectionId, id: { in: shifts.map((shift) => shift.id) } },
+        // Every shifted row moves by the same amount, so one statement covers
+        // them all rather than a query per row.
+        data: { position: { increment: input.items.length } },
+      });
+    }
+    return tx.item.createMany({ data, skipDuplicates: true });
+  });
 
-  return { added: count, skipped: data.length - count, total: data.length };
+  return {
+    added: created.count,
+    skipped: data.length - created.count,
+    total: data.length,
+  };
 }
 
 export async function deleteItem(userId: string, itemId: string): Promise<void> {
@@ -388,6 +416,46 @@ export async function upsertItemProgress(
   });
 
   return toItemRecord(row);
+}
+
+/* ── Ordering ─────────────────────────────────────────────────────────────── */
+
+/**
+ * Apply a manual reorder.
+ *
+ * Written in a single transaction: a half-applied reorder leaves two items
+ * sharing a position, and since position is the sort key that shows up as rows
+ * silently swapping on every render.
+ *
+ * Only ids belonging to this collection are touched. Anything else in the
+ * payload is ignored rather than rejected — a stale tab holding a deleted id
+ * should not fail the whole drag.
+ */
+export async function reorderItems(
+  userId: string,
+  collectionId: string,
+  updates: readonly { id: string; position: number }[]
+): Promise<void> {
+  await requireOwnedCollection(userId, collectionId);
+  if (updates.length === 0) return;
+
+  const owned = new Set(
+    (
+      await prisma.item.findMany({
+        where: { collectionId, id: { in: updates.map((u) => u.id) } },
+        select: { id: true },
+      })
+    ).map((i) => i.id)
+  );
+
+  const applicable = updates.filter((u) => owned.has(u.id));
+  if (applicable.length === 0) return;
+
+  await prisma.$transaction(
+    applicable.map((u) =>
+      prisma.item.update({ where: { id: u.id }, data: { position: u.position } })
+    )
+  );
 }
 
 /* ── Revisions ────────────────────────────────────────────────────────────── */

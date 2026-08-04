@@ -53,11 +53,17 @@ export const importItemSchema = z.object({
 
 export const importItemsSchema = z.object({
   items: z.array(importItemSchema).min(1).max(MAX_IMPORT_ITEMS),
+  /**
+   * Slot the new items in after this item id. `null` means the very start.
+   * Omitting the field appends, which is what a bulk paste should do.
+   */
+  insertAfter: z.string().nullable().optional(),
 });
 
 /** Raw paste — parsed server-side so the client and API agree on the rules. */
 export const importTextSchema = z.object({
   text: z.string().min(1).max(500_000),
+  insertAfter: z.string().nullable().optional(),
 });
 
 export const upsertItemProgressSchema = z
@@ -96,3 +102,12 @@ export type UpsertItemProgressInput = z.infer<typeof upsertItemProgressSchema>;
 export const flagItemSchema = z.object({ flagged: z.boolean() });
 
 export type FlagItemInput = z.infer<typeof flagItemSchema>;
+
+/** Body for PATCH /api/collections/[id]/order. */
+export const reorderItemsSchema = z.object({
+  updates: z
+    .array(z.object({ id: z.string().min(1), position: z.number().int().min(0).max(100_000) }))
+    .max(MAX_IMPORT_ITEMS),
+});
+
+export type ReorderItemsInput = z.infer<typeof reorderItemsSchema>;

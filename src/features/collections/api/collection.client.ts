@@ -69,9 +69,34 @@ export interface ImportResponse {
   duplicatesInPaste: number;
 }
 
-/** Send the raw paste — the server re-parses so both sides agree on the rules. */
-export function importText(collectionId: string, text: string): Promise<ImportResponse> {
-  return post<ImportResponse>(`${BASE}/${collectionId}/items`, { text });
+/**
+ * Send the raw paste — the server re-parses so both sides agree on the rules.
+ *
+ * `insertAfter` slots the items in after that id; null means the very start.
+ * Omitting it appends, which is what a plain bulk paste should do.
+ */
+export function importText(
+  collectionId: string,
+  text: string,
+  insertAfter?: string | null
+): Promise<ImportResponse> {
+  return post<ImportResponse>(`${BASE}/${collectionId}/items`, {
+    text,
+    ...(insertAfter !== undefined && { insertAfter }),
+  });
+}
+
+/** Persist a manual reorder. Takes only the positions that actually changed. */
+export async function reorderItems(
+  collectionId: string,
+  updates: { id: string; position: number }[]
+): Promise<void> {
+  const res = await fetch(`${BASE}/${collectionId}/order`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ updates }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Reorder failed");
 }
 
 export function importParsed(collectionId: string, items: ParsedItem[]): Promise<ImportResponse> {

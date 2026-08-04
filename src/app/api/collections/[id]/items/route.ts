@@ -82,7 +82,7 @@ export const POST = withAuth<Params>(async ({ userId, request, params }) => {
   const body: unknown = await request.json().catch(() => null);
 
   if (body && typeof body === "object" && "text" in body) {
-    const { text } = importTextSchema.parse(body);
+    const { text, insertAfter } = importTextSchema.parse(body);
     const parsed = parseItemList(text);
 
     const expanded = await expandPlaylists(text, parsed.items.length);
@@ -99,7 +99,7 @@ export const POST = withAuth<Params>(async ({ userId, request, params }) => {
       throw ApiError.badRequest(`Too many items — the limit is ${MAX_IMPORT_ITEMS} per import`);
     }
 
-    const result = await importItems(userId, params.id, { items: allItems });
+    const result = await importItems(userId, params.id, { items: allItems, insertAfter });
     return {
       ...result,
       issues: allIssues,

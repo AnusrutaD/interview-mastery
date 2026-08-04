@@ -19,6 +19,8 @@ import { Spinner } from "@/components/ui/Spinner";
 import { ItemFilters } from "@/features/items/components/ItemFilters";
 import { ItemTable } from "@/features/items/components/ItemTable";
 import { RevisionMode } from "@/features/items/components/RevisionMode";
+import { ReorderList } from "@/features/items/components/ReorderList";
+import { canReorder } from "@/core/domain/ordering";
 import { useCollection } from "@/features/collections/hooks/useCollection";
 import { ImportPanel } from "@/features/collections/components/ImportPanel";
 import { TargetBar, TargetEditor } from "@/features/collections/components/TargetEditor";
@@ -32,6 +34,10 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
 
   const [showImport, setShowImport] = useState(false);
   const [revising, setRevising] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  // undefined = append (a plain paste); a value = slot in after that id,
+  // where null anchors at the very start.
+  const [insertAfter, setInsertAfter] = useState<string | null | undefined>(undefined);
   const [filters, setFilters] = useState<ItemFilterState>(DEFAULT_ITEM_FILTERS);
 
   // Facets come from the items themselves, so a playlist and a problem set get
@@ -51,6 +57,10 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
     []
   );
   const resetFilters = useCallback(() => setFilters(DEFAULT_ITEM_FILTERS), []);
+
+  // Dragging a filtered list is ambiguous — the rows between two visible
+  // neighbours are hidden, so "drop below this one" has no single meaning.
+  const reorderable = canReorder({ filtered: isFiltering(filters) });
 
   if (loading) {
     return (
@@ -171,7 +181,21 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
           </Card>
         )}
 
-        {revising ? (
+        {reordering ? (
+          <ReorderList
+            items={items}
+            onReorder={(updates) => void session.reorder(updates)}
+            onInsertAfter={(afterId) => {
+              // Leaving reorder mode to show the import panel keeps one thing
+              // on screen at a time; the anchor is remembered until it is used.
+              setInsertAfter(afterId);
+              setReordering(false);
+              setShowImport(true);
+            }}
+            onExit={() => setReordering(false)}
+            disabled={saving}
+          />
+        ) : revising ? (
           <RevisionMode
             items={items}
             onRevise={(itemId) => void session.revise(itemId)}
@@ -195,9 +219,27 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
                 Revise {stats.due} due →
               </button>
             )}
+            {stats.total > 1 && (
+              <button
+                type="button"
+                onClick={() => setReordering(true)}
+                disabled={!reorderable}
+                title={
+                  reorderable
+                    ? undefined
+                    : "Clear the filters first — the order of a filtered list is ambiguous"
+                }
+                className="text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-blue-600 disabled:opacity-40 disabled:hover:text-gray-500 transition-colors"
+              >
+                ⠿ Reorder
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setShowImport((v) => !v)}
+              onClick={() => {
+                setInsertAfter(undefined);
+                setShowImport((v) => !v);
+              }}
               className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
             >
               {showImport ? "Hide import" : "+ Add items"}
@@ -206,11 +248,35 @@ export default function CollectionPage({ params }: { params: Promise<{ id: strin
         </div>
 
         {(showImport || stats.total === 0) && (
-          <ImportPanel
-            onImport={session.importText}
-            onImportPlaylist={session.importPlaylist}
-            saving={saving}
-          />
+          <>
+            {insertAfter !== undefined && (
+              <p className="text-xs text-blue-600 dark:text-blue-400 mb-2">
+                Inserting{" "}
+                {insertAfter === null
+                  ? "at the top of the list"
+                  : `after "${items.find((i) => i.id === insertAfter)?.title ?? "…"}"`}
+                {" · "}
+                <button
+                  type="button"
+                  onClick={() => setInsertAfter(undefined)}
+                  className="underline hover:no-underline"
+                >
+                  add to the end instead
+                </button>
+              </p>
+            )}
+            <ImportPanel
+              onImport={async (text) => {
+                const result = await session.importText(text, insertAfter);
+                // Consume the anchor. Leaving it set would silently slot the
+                // *next* paste into the same spot, which nobody asked for.
+                setInsertAfter(undefined);
+                return result;
+              }}
+              onImportPlaylist={session.importPlaylist}
+              saving={saving}
+            />
+          </>
         )}
 
         {stats.total > 0 && (

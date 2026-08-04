@@ -20,6 +20,7 @@ import {
   saveItemProgress,
   reviseItem as reviseItemRequest,
   flagItemForReview,
+  reorderItems as reorderItemsRequest,
   updateCollection,
   deleteItem as deleteItemRequest,
   type ImportResponse,
@@ -47,7 +48,9 @@ export interface UseCollectionResult {
   setReviewFlag: (itemId: string, flagged: boolean) => Promise<void>;
   setNotes: (itemId: string, notes: string) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
-  importText: (text: string) => Promise<ImportResponse>;
+  importText: (text: string, insertAfter?: string | null) => Promise<ImportResponse>;
+  /** Persist a manual reorder. Only changed positions are sent. */
+  reorder: (updates: { id: string; position: number }[]) => Promise<void>;
   importPlaylist: (url: string) => Promise<import("../api/collection.client").PlaylistImportResponse>;
 }
 
@@ -188,8 +191,8 @@ export function useCollection(collectionId: string): UseCollectionResult {
   }, []);
 
   const importText = useCallback(
-    async (text: string) => {
-      const result = await importTextRequest(collectionId, text);
+    async (text: string, insertAfter?: string | null) => {
+      const result = await importTextRequest(collectionId, text, insertAfter);
       // Refetch rather than merging locally: the server owns positions and
       // de-duplication, so its view is the only trustworthy one.
       refresh();
@@ -203,6 +206,27 @@ export function useCollection(collectionId: string): UseCollectionResult {
       const result = await importPlaylistRequest(collectionId, url);
       refresh();
       return result;
+    },
+    [collectionId, refresh]
+  );
+
+  const reorder = useCallback(
+    async (updates: { id: string; position: number }[]) => {
+      // Applied locally first so the list does not snap back mid-drag.
+      setRawItems((current) => {
+        const byId = new Map(updates.map((u) => [u.id, u.position]));
+        return current.map((item) =>
+          byId.has(item.id) ? { ...item, position: byId.get(item.id)! } : item
+        );
+      });
+      try {
+        await reorderItemsRequest(collectionId, updates);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not save the new order");
+        // The optimistic order is now a lie, so go and find the real one.
+        refresh();
+      }
     },
     [collectionId, refresh]
   );
@@ -275,5 +299,6 @@ export function useCollection(collectionId: string): UseCollectionResult {
     removeItem,
     importText,
     importPlaylist,
+    reorder,
   };
 }
