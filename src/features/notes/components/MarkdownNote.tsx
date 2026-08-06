@@ -1,7 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import {
+  MARKDOWN_REHYPE_PLUGINS,
+  MARKDOWN_REMARK_PLUGINS,
+} from "@/components/ui/markdownPlugins";
 import { Card } from "@/components/ui/Card";
 
 const PLACEHOLDER = `Write your notes in **Markdown**...
@@ -154,7 +157,12 @@ export function MarkdownNote({ value, onSave, saving, disabled }: MarkdownNotePr
         >
           {value ? (
             <div className={PROSE_CLASSES}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={MARKDOWN_REMARK_PLUGINS}
+                rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
+              >
+                {value}
+              </ReactMarkdown>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center gap-2">

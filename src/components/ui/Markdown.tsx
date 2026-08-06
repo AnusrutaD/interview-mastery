@@ -1,5 +1,8 @@
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import {
+  MARKDOWN_REHYPE_PLUGINS,
+  MARKDOWN_REMARK_PLUGINS,
+} from "@/components/ui/markdownPlugins";
 import { cn } from "@/lib/cn";
 
 /** Shared prose styling for all rendered markdown (notes + study content). */
@@ -21,7 +24,12 @@ export const PROSE = [
 export function Markdown({ children, className }: { children: string; className?: string }) {
   return (
     <div className={cn(PROSE, className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>
+      <ReactMarkdown
+        remarkPlugins={MARKDOWN_REMARK_PLUGINS}
+        rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
+      >
+        {children}
+      </ReactMarkdown>
     </div>
   );
 }
