@@ -178,3 +178,50 @@ describe("parseIsoDuration", () => {
     expect(parseIsoDuration("PT0S")).toBeNull();
   });
 });
+
+describe("rate-aware delta bounds", () => {
+  /**
+   * Regression: the default ceiling of 12s was tuned for 1x playback with a 5s
+   * sample. At 2x a normal tick advances 10s, and any timer jitter pushes it
+   * past 12 — so genuine watching was classified as a seek and discarded, and
+   * videos watched fast never completed.
+   */
+  it("credits a 2x tick when the bound scales with rate", () => {
+    const state = { watchedSeconds: 0, positionSeconds: 0 };
+    const tick = { previousPosition: 0, currentPosition: 10 };
+
+    // The old fixed ceiling happens to allow exactly this...
+    expect(recordTick(state, tick).watchedSeconds).toBe(10);
+    // ...but one slow frame pushes it over, and the credit vanishes.
+    expect(recordTick(state, { previousPosition: 0, currentPosition: 13 }).watchedSeconds).toBe(0);
+
+    // A bound derived from elapsed wall time x rate keeps the credit.
+    const elapsed = 5;
+    const maxDelta = elapsed * 2 * 1.5;
+    expect(
+      recordTick(state, { previousPosition: 0, currentPosition: 13, maxDelta }).watchedSeconds
+    ).toBe(13);
+  });
+
+  /** The bound must still reject a real seek at any rate. */
+  it("rejects a long jump even at 2x", () => {
+    const state = { watchedSeconds: 0, positionSeconds: 0 };
+    const maxDelta = 5 * 2 * 1.5; // 15s of headroom
+    const seeked = recordTick(state, {
+      previousPosition: 0,
+      currentPosition: 600,
+      maxDelta,
+    });
+    expect(seeked.watchedSeconds).toBe(0);
+    expect(seeked.positionSeconds).toBe(600);
+  });
+
+  /** At 1x the derived bound is tighter than the old constant, not looser. */
+  it("tightens seek detection at 1x", () => {
+    const state = { watchedSeconds: 0, positionSeconds: 0 };
+    const maxDelta = 5 * 1 * 1.5; // 7.5s
+    expect(
+      recordTick(state, { previousPosition: 0, currentPosition: 11, maxDelta }).watchedSeconds
+    ).toBe(0);
+  });
+});

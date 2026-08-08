@@ -21,6 +21,27 @@ import { cn } from "@/lib/cn";
  */
 
 const SAMPLE_MS = 5_000;
+
+/**
+ * Speeds offered. YouTube's own player supports these, but its settings menu is
+ * hidden at small embed sizes — which is why the control lives here instead of
+ * relying on their chrome.
+ */
+const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5, 1.75, 2] as const;
+
+/** Remembered across videos: nobody wants to re-select 1.5x on every lecture. */
+const RATE_KEY = "im.playbackRate";
+
+/**
+ * How far past the expected advance still counts as playback.
+ *
+ * The bound has to scale with rate. A fixed ceiling tuned for 1x classifies
+ * genuine 2x watching as a seek and throws the credit away, so watching fast
+ * silently stops counting and videos never complete. Deriving it from elapsed
+ * wall-clock time multiplied by the rate is both rate-aware and jitter-aware,
+ * and it tightens seek detection at 1x rather than loosening it.
+ */
+const DELTA_TOLERANCE = 1.5;
 /** How often progress reaches the server. Cheap enough to be frequent. */
 const SAVE_MS = 15_000;
 const IFRAME_API = "https://www.youtube.com/iframe_api";
@@ -30,6 +51,9 @@ interface YTPlayer {
   getDuration(): number;
   getPlayerState(): number;
   seekTo(seconds: number, allowSeekAhead: boolean): void;
+  setPlaybackRate(rate: number): void;
+  getPlaybackRate(): number;
+  getAvailablePlaybackRates(): number[];
   destroy(): void;
 }
 
@@ -99,6 +123,13 @@ export function VideoPlayer({
   const [display, setDisplay] = useState<WatchState>(stateRef.current);
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [rate, setRate] = useState(1);
+
+  // Wall-clock anchor for the delta bound. Held in a ref because the sampling
+  // loop reads it without wanting to re-subscribe on every tick. Seeded at 0
+  // rather than Date.now() because reading the clock during render is impure;
+  // the sampling effect sets the real anchor before the first tick.
+  const lastTickAtRef = useRef(0);
 
   // Effective duration: prefer what the player reports, fall back to metadata.
   const [liveDuration, setLiveDuration] = useState<number | null>(durationSeconds);
@@ -137,6 +168,14 @@ export function VideoPlayer({
             setReady(true);
             const reported = event.target.getDuration();
             if (reported > 0) setLiveDuration(Math.floor(reported));
+
+            const saved = Number(window.localStorage.getItem(RATE_KEY));
+            if (PLAYBACK_RATES.includes(saved as (typeof PLAYBACK_RATES)[number])) {
+              event.target.setPlaybackRate(saved);
+              setRate(saved);
+            } else {
+              setRate(event.target.getPlaybackRate());
+            }
           },
           onStateChange: (event: { data: number }) => {
             if (cancelled || !window.YT) return;
@@ -166,15 +205,27 @@ export function VideoPlayer({
   useEffect(() => {
     if (!ready || !playing) return;
 
+    lastTickAtRef.current = Date.now();
+
     const id = window.setInterval(() => {
       const player = playerRef.current;
       if (!player) return;
 
       const current = player.getCurrentTime();
       const before = stateRef.current;
+
+      // Bound derived from how long actually elapsed and how fast the video is
+      // running, rather than a constant tuned for 1x. The floor keeps a very
+      // short tick from rejecting everything.
+      const now = Date.now();
+      const elapsed = (now - lastTickAtRef.current) / 1000;
+      lastTickAtRef.current = now;
+      const maxDelta = Math.max(2, elapsed * player.getPlaybackRate() * DELTA_TOLERANCE);
+
       const next = recordTick(before, {
         previousPosition: lastPositionRef.current,
         currentPosition: current,
+        maxDelta,
       });
 
       lastPositionRef.current = current;
@@ -203,10 +254,39 @@ export function VideoPlayer({
     };
   }, [save]);
 
+  const changeRate = (next: number) => {
+    playerRef.current?.setPlaybackRate(next);
+    setRate(next);
+    window.localStorage.setItem(RATE_KEY, String(next));
+  };
+
   return (
     <div>
       <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden">
         <div ref={mountRef} className="absolute inset-0 w-full h-full" />
+      </div>
+
+      {/* Speed lives outside the iframe: YouTube hides its settings menu at
+          small embed sizes, so relying on their gear icon is unreliable here. */}
+      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+        <span className="text-[11px] text-gray-400 dark:text-gray-600 mr-0.5">Speed</span>
+        {PLAYBACK_RATES.map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => changeRate(value)}
+            disabled={!ready}
+            aria-pressed={rate === value}
+            className={cn(
+              "text-[11px] font-medium px-2 h-6 rounded-lg border transition-colors disabled:opacity-40",
+              rate === value
+                ? "bg-red-500 border-red-500 text-white"
+                : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-500"
+            )}
+          >
+            {value}×
+          </button>
+        ))}
       </div>
 
       <div className="mt-3">
