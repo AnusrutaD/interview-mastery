@@ -108,6 +108,8 @@ export function VideoPlayer({
   onComplete,
 }: VideoPlayerProps) {
   const mountRef = useRef<HTMLDivElement>(null);
+  /** Wraps the iframe *and* our controls, so fullscreen keeps both on screen. */
+  const shellRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const lastPositionRef = useRef(initialPositionSeconds);
   const lastSavedRef = useRef(0);
@@ -124,6 +126,7 @@ export function VideoPlayer({
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [rate, setRate] = useState(1);
+  const [fullscreen, setFullscreen] = useState(false);
 
   // Wall-clock anchor for the delta bound. Held in a ref because the sampling
   // loop reads it without wanting to re-subscribe on every tick. Seeded at 0
@@ -161,6 +164,12 @@ export function VideoPlayer({
           start: Math.max(0, Math.floor(initialPositionSeconds) - 2),
           rel: 0,
           modestbranding: 1,
+          // Hide YouTube's fullscreen button so ours is the only route: theirs
+          // fullscreens the iframe alone, which takes our speed control off
+          // screen. Where the Fullscreen API is unavailable — iOS Safari only
+          // allows it on <video> — theirs is left in place rather than leaving
+          // the user with no fullscreen at all.
+          fs: typeof document !== "undefined" && document.fullscreenEnabled ? 0 : 1,
         },
         events: {
           onReady: (event: { target: YTPlayer }) => {
@@ -245,6 +254,12 @@ export function VideoPlayer({
     return () => window.clearInterval(id);
   }, [ready, playing, liveDuration, save, onComplete]);
 
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === shellRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
   // Flush on tab close so a session is not lost.
   useEffect(() => {
     const flush = () => save(true);
@@ -260,34 +275,81 @@ export function VideoPlayer({
     window.localStorage.setItem(RATE_KEY, String(next));
   };
 
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void shellRef.current?.requestFullscreen();
+  };
+
+  const speedControls = (
+    <div
+      className={cn(
+        "flex items-center gap-1.5 flex-wrap",
+        // In fullscreen the shell is the whole screen, so the bar floats over
+        // the video instead of sitting under it.
+        fullscreen
+          ? "absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-black/75 backdrop-blur px-3 py-2 rounded-xl"
+          : "mt-2"
+      )}
+    >
+      <span
+        className={cn(
+          "text-[11px] mr-0.5",
+          fullscreen ? "text-gray-300" : "text-gray-400 dark:text-gray-600"
+        )}
+      >
+        Speed
+      </span>
+      {PLAYBACK_RATES.map((value) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => changeRate(value)}
+          disabled={!ready}
+          aria-pressed={rate === value}
+          className={cn(
+            "text-[11px] font-medium px-2 h-6 rounded-lg border transition-colors disabled:opacity-40",
+            rate === value
+              ? "bg-red-500 border-red-500 text-white"
+              : fullscreen
+                ? "border-white/30 text-gray-200 hover:border-red-300 hover:text-red-300"
+                : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-500"
+          )}
+        >
+          {value}×
+        </button>
+      ))}
+
+      <button
+        type="button"
+        onClick={toggleFullscreen}
+        aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        className={cn(
+          "text-[11px] font-medium px-2 h-6 rounded-lg border transition-colors ml-1",
+          fullscreen
+            ? "border-white/30 text-gray-200 hover:border-white/60"
+            : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400"
+        )}
+      >
+        {fullscreen ? "⤡ Exit" : "⛶ Fullscreen"}
+      </button>
+    </div>
+  );
+
   return (
     <div>
-      <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden">
-        <div ref={mountRef} className="absolute inset-0 w-full h-full" />
+      <div
+        ref={shellRef}
+        className={cn(
+          "relative w-full bg-black overflow-hidden",
+          // Fullscreen sets its own dimensions; the aspect ratio would fight it.
+          fullscreen ? "h-full flex items-center" : "aspect-video rounded-xl"
+        )}
+      >
+        <div ref={mountRef} className={cn("w-full", fullscreen ? "aspect-video" : "absolute inset-0 h-full")} />
+        {fullscreen && speedControls}
       </div>
 
-      {/* Speed lives outside the iframe: YouTube hides its settings menu at
-          small embed sizes, so relying on their gear icon is unreliable here. */}
-      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-        <span className="text-[11px] text-gray-400 dark:text-gray-600 mr-0.5">Speed</span>
-        {PLAYBACK_RATES.map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => changeRate(value)}
-            disabled={!ready}
-            aria-pressed={rate === value}
-            className={cn(
-              "text-[11px] font-medium px-2 h-6 rounded-lg border transition-colors disabled:opacity-40",
-              rate === value
-                ? "bg-red-500 border-red-500 text-white"
-                : "border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-red-300 hover:text-red-500"
-            )}
-          >
-            {value}×
-          </button>
-        ))}
-      </div>
+      {!fullscreen && speedControls}
 
       <div className="mt-3">
         <div className="flex items-center justify-between text-xs mb-1.5 gap-3">
